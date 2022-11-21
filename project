@@ -1,0 +1,65 @@
+#!/bin/bash
+
+## Project script is intended to be the CLI inteface for manipulating / working with the resweave project as a developer.
+
+## Variables
+
+PROJECT_ROOT=`git rev-parse --show-toplevel`
+PROJECT_NAME=`basename "$PROJECT_ROOT"`
+
+source $PROJECT_ROOT/scripts/log.sh
+
+### EXIT CODES
+
+STATUS_USAGE_USED=1
+
+## Function: usage -> Print the usage message and exit with status code STATUS_USAGE_USED
+
+usage() {
+  echo "USAGE:  project <comamnd>"
+  echo ""
+  echo "commands:"
+  echo -e "  - ${CLR_START}${BRIGHT};${GREEN}${CLR_END}lint${CLR_RESET}"
+  echo -e "  - ${CLR_START}${BRIGHT};${GREEN}${CLR_END}test${CLR_RESET}"
+  echo ""
+  echo "  - all (all commands above) "
+  echo "  - help (this message)"
+  echo ""
+  echo "Help for commands can be found by: project command help"
+  exit $STATUS_USAGE_USED
+}
+
+## Function: lint -> Run the lint script with necessary parameters
+
+cmd_lint() {
+  $PROJECT_ROOT/scripts/lint.sh $PROJECT_ROOT $@
+}
+
+cmd_test() {
+  $PROJECT_ROOT/scripts/test.sh $PROJECT_ROOT $@
+}
+## Start the script
+
+clear
+
+if [ $# == 0 ]; then
+  usage
+fi
+
+CMD=$1
+shift
+case $CMD in
+  lint)
+    log_info_stage "Linting" $PROJECT_NAME
+    cmd_lint $@
+    ;;
+  test)
+    log_info_stage "Testing" $PROJECT_NAME
+    cmd_test $@
+    ;;
+  *)
+    usage
+    ;;
+esac
+
+
