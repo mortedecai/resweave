@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - main
-      - project-creation
   pull_request:
     types: [opened, synchronize, reopened]
 jobs:
