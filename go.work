@@ -1,0 +1,8 @@
+go 1.19
+
+use (
+	./
+	./testing/integration/html/hello
+)
+
+replace github.com/agilitree/resweave v0.0.0 => ./

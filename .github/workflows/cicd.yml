@@ -1,0 +1,51 @@
+name: Resweave CI/CD Build
+on:
+  push:
+  pull_request:
+    types: [opened, synchronize, reopened]
+jobs:
+  code-check:
+    name: Build and check code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - run: ./project coverage
+      - name: Static Check
+        uses: dominikh/staticcheck-action@v1.2.0
+        with:
+          version: "2022.1"
+          install-go: false
+      - name: Run Gosec Security Scanner
+        uses: securego/gosec@master
+        with:
+          # we let the report trigger content trigger a failure using the GitHub Security features.
+          args: './...'
+      - name: Run Integration Tests
+        run: ./project test integration
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=agilitree_resweave
+            -Dsonar.organization=agilitree
+            -Dsonar.projectVersion=0.1.0-alpha
+            -Dsonar.sourceEncoding=UTF-8
+            -Dsonar.sources=.
+            -Dsonar.exclusions=**/*_test.go,**/vendor/**,**/testing/integration/**/*.go
+            -Dsonar.tests=.
+            -Dsonar.test.exclusions=**/vendor/**
+            -Dsonar.test.inclusions=**/*_test.go
+            -Dsonar.go.coverage.reportPaths=.reports/coverage.out
+            -Dsonar.go.tests.reportPaths=.reports/test.json
+
+      - name: Archive Code Reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: project-reports
+          path: .reports/
+

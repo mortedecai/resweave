@@ -1,0 +1,25 @@
+services:
+  hello:
+    image: golang:alpine
+    volumes:
+      - ../../../../:/go/src/github.com/agilitree/resweave
+    working_dir: /go/src/github.com/agilitree/resweave/testing/integration/html/hello
+    command: ["go", "run", "hello.go"]
+    ports:
+      - 8080:8080
+    networks:
+      - backend
+
+  libtest:
+    image: golang:1.19.4
+    volumes:
+      - ../../../../:/go/src/github.com/agilitree/resweave
+    working_dir: /go/src/github.com/agilitree/resweave/testing/integration/html/hello
+    command: [ "go", "run", "github.com/onsi/ginkgo/v2/ginkgo", "-r", "--randomize-all", "--randomize-suites", "--fail-on-pending", "--keep-going", "--race", "--trace", "--json-report=report.json", "--output-dir=../../../../.reports/", "--keep-separate-reports", "--junit-report=report.xml" ]
+    environment:
+      - HOST_NAME=hello
+    networks:
+      - backend
+networks:
+  backend: {}
+

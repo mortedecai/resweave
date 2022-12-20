@@ -1,7 +1,5 @@
 #!/bin/bash
 
-STATUS_APP_NOT_FOUND=2
-
 usage() {
   echo "USAGE: lint.sh <PROJECT ROOT> [sub-command]"
   echo ""
@@ -12,6 +10,17 @@ usage() {
 
   exit $STATUS_USAGE_USED
 }
+
+if [ $# = 0 ]; then
+  usage
+fi
+
+
+PROJECT_ROOT=$1
+shift
+
+source ${PROJECT_ROOT}/scripts/status.sh
+source ${PROJECT_ROOT}/scripts/log.sh
 
 check_for_staticcheck() {
   which staticcheck
@@ -27,7 +36,7 @@ check_binaries() {
 
 run_staticcheck() {
   fmt="stylish"
-  if [ $# = 1 ]; then
+  if [[ $# = 1 ]]; then
     fmt="$1"
   fi
 
@@ -35,7 +44,6 @@ run_staticcheck() {
   staticcheck -f ${fmt}
   popd
 }
-
 lint_all() {
   check_binaries
 
@@ -47,16 +55,6 @@ lint_all_json() {
 
   run_staticcheck "json"
 }
-
-if [ $# = 0 ]; then
-  usage
-fi
-
-
-PROJECT_ROOT=$1
-shift
-
-source ${PROJECT_ROOT}/scripts/log.sh
 
 if [ $# = 0 ]; then
   lint_all

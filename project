@@ -19,6 +19,7 @@ usage() {
   echo "USAGE:  project <comamnd>"
   echo ""
   echo "commands:"
+  echo -e "  - ${CLR_START}${BRIGHT};${GREEN}${CLR_END}coverage${CLR_RESET}"
   echo -e "  - ${CLR_START}${BRIGHT};${GREEN}${CLR_END}lint${CLR_RESET}"
   echo -e "  - ${CLR_START}${BRIGHT};${GREEN}${CLR_END}test${CLR_RESET}"
   echo ""
@@ -29,12 +30,16 @@ usage() {
   exit $STATUS_USAGE_USED
 }
 
-## Function: lint -> Run the lint script with necessary parameters
-
+## Function: cmd_lint -> Run the lint script with necessary parameters
 cmd_lint() {
   $PROJECT_ROOT/scripts/lint.sh $PROJECT_ROOT $@
 }
+## Function: cmd_coverage -> Run the coverage script with necessary parameters
+cmd_coverage() {
+  $PROJECT_ROOT/scripts/coverage.sh $PROJECT_ROOT $@
+}
 
+## Function: cmd_test -> Run the test script with the remaining parameters
 cmd_test() {
   $PROJECT_ROOT/scripts/test.sh $PROJECT_ROOT $@
 }
@@ -49,6 +54,10 @@ fi
 CMD=$1
 shift
 case $CMD in
+  coverage)
+    log_info_stage "Generating Coverage" $PROJECT_NAME
+    cmd_coverage $@
+    ;;
   lint)
     log_info_stage "Linting" $PROJECT_NAME
     cmd_lint $@
