@@ -31,8 +31,8 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >
-            -Dsonar.projectKey=agilitree_resweave
-            -Dsonar.organization=agilitree
+            -Dsonar.projectKey=mortedecai_resweave
+            -Dsonar.organization=mortedecai
             -Dsonar.projectVersion=0.1.0-alpha
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.sources=.

@@ -1,4 +1,4 @@
-module mortedecai/resweave/hellotest
+module mortedecai/resweave/multihellotest
 
 go 1.19
 

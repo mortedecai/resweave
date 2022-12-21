@@ -40,12 +40,17 @@ test_html() {
             TEST_RESULT=$?
             docker-compose down
             if [[ ${TEST_RESULT} != 0 ]]; then
+                echo "---- TESTS FAILED ${file} ----"
                 exit  ${TEST_RESULT}
             fi
+            popd
         else
-            echo "SKIPPING: ${file}"
+          echo "**** SKIPPING ${file} ****"
         fi
     done
+    echo ""
+    echo "++++ HTML Integration Tests Passed ++++"
+    echo ""
 }
 
 

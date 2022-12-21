@@ -1,7 +1,7 @@
 package resweave_test
 
 import (
-	"github.com/agilitree/resweave"
+	"github.com/mortedecai/resweave"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

@@ -28,6 +28,8 @@ test_unit() {
 
 test_integration() {
   ${PROJECT_ROOT}/scripts/integration_test.sh $PROJECT_ROOT $@
+
+  echo "++++ Integration Tests Passed ++++"
 }
 
 test_all() {

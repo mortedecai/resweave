@@ -3,6 +3,7 @@ go 1.19
 use (
 	./
 	./testing/integration/html/hello
+	./testing/integration/html/multihello
 )
 
-replace github.com/agilitree/resweave v0.0.0 => ./
+replace github.com/mortedecai/resweave v0.0.0 => ./
