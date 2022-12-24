@@ -13,13 +13,15 @@ import (
 )
 
 var _ = Describe("Server", func() {
+	const (
+		port = 8080
+		// htmlDir re-declared b/c it is not in resweave_test package.
+		htmlDir = "testing/html/"
+	)
+
 	Describe("Initialization", func() {
 		var (
 			s Server
-		)
-		const (
-			port    = 8080
-			htmlDir = "testing/html/"
 		)
 		BeforeEach(func() {
 			s = NewServer(port).(*server)
@@ -49,10 +51,6 @@ var _ = Describe("Server", func() {
 	Describe("Host Names", func() {
 		var (
 			s Server
-		)
-		const (
-			port    = 8080
-			htmlDir = "testing/html/"
 		)
 		BeforeEach(func() {
 			s = NewServer(port).(*server)

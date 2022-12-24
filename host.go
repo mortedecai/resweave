@@ -24,11 +24,6 @@ type Host interface {
 	Serve(w http.ResponseWriter, req *http.Request)
 }
 
-const (
-	// FmtResourceAlreadyExists is the format string for a resource not existing in the Host
-	FmtResourceAlreadyExists = "resource '' already exists on host '%s'"
-)
-
 // HostName is a type for managing host names in the resweave system.
 type HostName string
 

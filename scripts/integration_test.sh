@@ -48,9 +48,6 @@ test_html() {
           echo "**** SKIPPING ${file} ****"
         fi
     done
-    echo ""
-    echo "++++ HTML Integration Tests Passed ++++"
-    echo ""
 }
 
 
