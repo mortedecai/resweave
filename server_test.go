@@ -69,7 +69,7 @@ var _ = Describe("Server", func() {
 				Expect(err).ToNot(HaveOccurred())
 				expContents := string(data)
 				recorder := httptest.NewRecorder()
-				req, err := http.NewRequest(http.MethodGet, "localhost:8080/", nil)
+				req, err := http.NewRequest(http.MethodGet, "/", nil)
 				Expect(err).ToNot(HaveOccurred())
 
 				s.(*server).serve(recorder, req)

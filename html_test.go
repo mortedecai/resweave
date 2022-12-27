@@ -1,6 +1,7 @@
 package resweave_test
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -39,7 +40,7 @@ var _ = Describe("Html", func() {
 			Expect(err).ToNot(HaveOccurred())
 			expContents := string(data)
 			recorder := httptest.NewRecorder()
-			req, err := http.NewRequest(http.MethodGet, "localhost:8080/", nil)
+			req, err := http.NewRequest(http.MethodGet, "/", nil)
 			Expect(err).ToNot(HaveOccurred())
 
 			htmlRes.Fetch(recorder, req)
@@ -49,6 +50,44 @@ var _ = Describe("Html", func() {
 			respData, err := io.ReadAll(response.Body)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(string(respData)).To(Equal(expContents))
+		})
+		It("should return the correct fullPath() value", func() {
+			Expect(htmlRes.FullPath()).To(Equal(resweave.ResourceName("/")))
+			htmlRes = resweave.NewHTML("/one", htmlDir)
+			Expect(htmlRes.FullPath()).To(Equal(resweave.ResourceName("/one/")))
+		})
+	})
+	var _ = Describe("Named root resource", func() {
+		var (
+			htmlRes resweave.HTMLResource
+			name    resweave.ResourceName
+		)
+		BeforeEach(func() {
+			name = "name"
+			htmlRes = resweave.NewHTML(name, htmlDir)
+		})
+		It("should be possible to create a named resource", func() {
+			Expect(htmlRes.Name()).To(Equal(name))
+		})
+		It("should be possible to fetch the index of a named resource", func() {
+			data, err := os.ReadFile(htmlDir + "index.html")
+			Expect(err).ToNot(HaveOccurred())
+			expContents := string(data)
+			recorder := httptest.NewRecorder()
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/%s/", name), nil)
+			Expect(err).ToNot(HaveOccurred())
+
+			htmlRes.Fetch(recorder, req)
+			response := recorder.Result()
+			defer response.Body.Close()
+			Expect(response.StatusCode).To(Equal(http.StatusOK))
+			respData, err := io.ReadAll(response.Body)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(respData)).To(Equal(expContents))
+		})
+		It("should return the correct fullPath() value", func() {
+			expPath := resweave.ResourceName("/" + name + "/")
+			Expect(htmlRes.FullPath()).To(Equal(expPath))
 		})
 	})
 })

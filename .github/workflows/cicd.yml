@@ -23,6 +23,7 @@ jobs:
           # we let the report trigger content trigger a failure using the GitHub Security features.
           args: './...'
       - name: Run Integration Tests
+        if: ${{ contains(fromJson('["pull_request"]'), github.event_name) }}
         run: ./project test integration
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master

@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	fmt.Println("Running Server for HTML Integration Test: Hello")
+	fmt.Println("Running Server for HTML Integration Test: Multi Host Hello")
 	server := resweave.NewServer(80)
 	htmlResource := resweave.NewHTML("", "./html/default")
 	caHtmlResource := resweave.NewHTML("", "./html/caHost")

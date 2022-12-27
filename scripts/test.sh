@@ -19,7 +19,11 @@ fi
 
 
 PROJECT_ROOT=$1
+SILENT_TESTS=0
 shift
+if [[ $0 == "-s" ]]; then
+    SILENT_TESTS=1
+fi
 
 source ${PROJECT_ROOT}/scripts/status.sh
 source ${PROJECT_ROOT}/scripts/log.sh
@@ -30,11 +34,17 @@ INT_TEST_RESULT=0
 test_unit() {
     go test $(grep "module" go.mod | sed -E "s/^module[[:space:]]*//g") > ${PROJECT_ROOT}/.reports/unit_tests.log 2>&1
     UNIT_TEST_RESULT=$?
+    if [[ $SILENT_TESTS == 0 ]]; then
+        cat ${PROJECT_ROOT}/.reports/unit_tests.log
+    fi
 }
 
 test_integration() {
-  ${PROJECT_ROOT}/scripts/integration_test.sh $PROJECT_ROOT $@ > ${PROJECT_ROOT}/.reports/integration_tests.log 2>&1
-  INT_TEST_RESULT=$?
+    ${PROJECT_ROOT}/scripts/integration_test.sh $PROJECT_ROOT $@ > ${PROJECT_ROOT}/.reports/integration_tests.log 2>&1
+    INT_TEST_RESULT=$?
+    if [[ $SILENT_TESTS == 0 ]]; then
+        cat ${PROJECT_ROOT}/.reports/integration_tests.log
+    fi
 }
 
 test_all() {

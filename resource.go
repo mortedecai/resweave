@@ -7,6 +7,20 @@ import (
 // ResourceName is the identifier for the resource
 type ResourceName string
 
+// ResourceNames is a slice of ResourceName instances
+func ResourceNames(n []string) []ResourceName {
+	names := make([]ResourceName, len(n))
+	for i, v := range n {
+		names[i] = ResourceName(v)
+	}
+	return names
+}
+
+// String converts the ResourceName to a string
+func (rn ResourceName) String() string {
+	return string(rn)
+}
+
 // Resource defines the base operations necessary for a Resource
 type Resource interface {
 	Name() ResourceName

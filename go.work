@@ -3,7 +3,8 @@ go 1.19
 use (
 	./
 	./testing/integration/html/hello
-	./testing/integration/html/multihello
+	./testing/integration/html/multihosthello
+	./testing/integration/html/multiroothello
 )
 
 replace github.com/mortedecai/resweave v0.0.0 => ./

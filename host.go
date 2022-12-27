@@ -58,7 +58,7 @@ func (h *host) AddResource(r Resource) error {
 	}
 
 	if _, found := h.resources[r.Name()]; found {
-		return fmt.Errorf(FmtResourceAlreadyExists, h.name)
+		return fmt.Errorf(FmtResourceAlreadyExists, r.Name(), h.Name())
 	}
 	h.resources[r.Name()] = r
 	return nil
@@ -70,8 +70,15 @@ func (h *host) GetResource(name ResourceName) (res Resource, found bool) {
 }
 
 func (h *host) Serve(w http.ResponseWriter, req *http.Request) {
-	if r, found := h.resources[""]; found {
-		r.(HTMLResource).Fetch(w, req)
+	pathSegs := strings.Split(req.URL.Path, "/")[1:]
+	reqPaths := ResourceNames(pathSegs)
+
+	if res, found := h.GetResource(reqPaths[0]); found {
+		res.(HTMLResource).Fetch(w, req)
+		return
+	}
+	if res, found := h.GetResource(ResourceName("")); found {
+		res.(HTMLResource).Fetch(w, req)
 		return
 	}
 	w.WriteHeader(http.StatusNotFound)
