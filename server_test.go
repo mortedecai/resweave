@@ -10,6 +10,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"go.uber.org/zap"
 )
 
 var _ = Describe("Server", func() {
@@ -29,6 +30,7 @@ var _ = Describe("Server", func() {
 		It("should be possible to create a new server", func() {
 			Expect(s).ToNot(BeNil())
 			Expect(s.Port()).To(Equal(port))
+			Expect(s.(*server).Logger()).To(BeNil())
 		})
 		It("should be possible to create a new http.Server with the appropriate timeouts", func() {
 			srv := s.(*server).createHTTPServer()
@@ -47,6 +49,27 @@ var _ = Describe("Server", func() {
 			Expect(v.Name()).To(BeEquivalentTo(""))
 			Expect(s).To(BeTrue())
 		})
+		It("should be possible to set a logger on the server only", func() {
+			l, err := zap.NewProduction()
+			Expect(err).ToNot(HaveOccurred())
+			s.SetLogger(l.Sugar(), false)
+			Expect(s.(*server).Logger()).ToNot(BeNil())
+			Expect(s.(*server).hosts[""].Logger()).To(BeNil())
+			s.SetLogger(nil, false)
+			Expect(s.(*server).Logger()).To(BeNil())
+			Expect(s.(*server).hosts[""].Logger()).To(BeNil())
+		})
+		It("should be possible to recursively set a logger on the server", func() {
+			l, err := zap.NewProduction()
+			Expect(err).ToNot(HaveOccurred())
+			s.SetLogger(l.Sugar(), true)
+			Expect(s.(*server).Logger()).ToNot(BeNil())
+			Expect(s.(*server).hosts[""].Logger()).ToNot(BeNil())
+			s.SetLogger(nil, true)
+			Expect(s.(*server).Logger()).To(BeNil())
+			Expect(s.(*server).hosts[""].Logger()).To(BeNil())
+		})
+
 	})
 	Describe("Host Names", func() {
 		var (

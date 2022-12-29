@@ -2,6 +2,8 @@ package resweave
 
 import (
 	"net/http"
+
+	"go.uber.org/zap"
 )
 
 // ResourceName is the identifier for the resource
@@ -24,6 +26,8 @@ func (rn ResourceName) String() string {
 // Resource defines the base operations necessary for a Resource
 type Resource interface {
 	Name() ResourceName
+	Logger() *zap.SugaredLogger
+	SetLogger(logger *zap.SugaredLogger, recursive bool)
 }
 
 // ResourceLister interface defines the operations necessary for any Resource which provides resource List functionality

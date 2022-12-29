@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 // Server is the resweave implementation of an opinionated resource server.
@@ -31,6 +33,8 @@ type Server interface {
 	Run() error
 	// Port returns the port number the server will run on.
 	Port() int
+	// Sets the logger to use for the server, and if recursive is true, to each of the hosts and resources.
+	SetLogger(logger *zap.SugaredLogger, recursive bool)
 }
 
 const (
@@ -38,6 +42,9 @@ const (
 )
 
 // NewServer creates a new instance of a resweave Server.
+// By default this serer will not log.
+// If logging is desired, a zap.SugaredLogger may be provided to the Server.SetLogger(...) function.
+// Logging can be disabled by calling Server.SetLogger(nil).
 //
 // Parameters:
 //
@@ -45,12 +52,20 @@ const (
 func NewServer(port int) Server {
 	s := &server{port: port, hosts: make(HostMap)}
 	s.hosts[defaultHostName] = newHost(defaultHostName)
+	s.logHolder = newLogholder("<srv>", s.recurse)
 	return s
 }
 
 type server struct {
 	port  int
 	hosts HostMap
+	logHolder
+}
+
+func (s *server) recurse(l *zap.SugaredLogger) {
+	for _, h := range s.hosts {
+		h.SetLogger(l, true)
+	}
 }
 
 func (s *server) getRunAddr() string {
@@ -62,6 +77,7 @@ func (s *server) Port() int {
 }
 
 func (s *server) createHTTPServer() *http.Server {
+	s.Infow("createHTTPServer", "Address", s.getRunAddr())
 	return &http.Server{
 		Addr:              s.getRunAddr(),
 		ReadHeaderTimeout: 3 * time.Second,
@@ -73,11 +89,15 @@ func (s *server) getDefaultHost() Host {
 }
 
 func (s *server) serve(w http.ResponseWriter, req *http.Request) {
+	s.Infow("serve", "Request URI", req.URL, "Host", req.Host, "Request", req)
 	var host Host = s.getDefaultHost()
 	hostname := HostName(req.Host)
 
 	if h, f := s.hosts[hostname.StripPort()]; f {
+		s.Infow("serve", "Hostname", hostname.StripPort(), "Found?", true, "Default?", false)
 		host = h
+	} else {
+		s.Infow("serve", "Hostname", hostname.StripPort(), "Found?", false, "Default?", true)
 	}
 	host.Serve(w, req)
 }

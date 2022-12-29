@@ -10,6 +10,7 @@ import (
 	"github.com/mortedecai/resweave"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"go.uber.org/zap"
 )
 
 const (
@@ -34,6 +35,19 @@ var _ = Describe("Html", func() {
 		})
 		It("should be possible to check the base directory of the HTML resource", func() {
 			Expect(htmlRes.BaseDir()).To(Equal(htmlDir))
+		})
+		It("should have a nil logger initially", func() {
+			Expect(htmlRes.Logger()).To(BeNil())
+		})
+		It("should be possible to set a logger", func() {
+			// It doesn't matter if recursive is true or false, HTMLResources cannot have child Resources.
+			Expect(htmlRes.Logger()).To(BeNil())
+			l, err := zap.NewProduction()
+			Expect(err).ToNot(HaveOccurred())
+			htmlRes.SetLogger(l.Sugar(), true)
+			Expect(htmlRes.Logger()).ToNot(BeNil())
+			htmlRes.SetLogger(nil, true)
+			Expect(htmlRes.Logger()).To(BeNil())
 		})
 		It("should fetch the index file directory correctly", func() {
 			data, err := os.ReadFile(htmlDir + "index.html")

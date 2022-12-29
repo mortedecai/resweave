@@ -3,6 +3,7 @@ package resweave
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -16,13 +17,15 @@ type HTMLResource interface {
 }
 
 type htmlResource struct {
+	logHolder
 	name ResourceName
 	base string
 }
 
 // NewHTML creats a new HTMLResource for use with a resweave Server
 func NewHTML(name ResourceName, baseDir string) HTMLResource {
-	return &htmlResource{name: name, base: baseDir}
+	// HTML resources never have sub resources; no recurser function necessary.
+	return &htmlResource{name: name, base: baseDir, logHolder: newLogholder(name.String(), nil)}
 }
 
 func (h *htmlResource) Name() ResourceName {
@@ -30,6 +33,14 @@ func (h *htmlResource) Name() ResourceName {
 }
 
 func (h *htmlResource) Fetch(w http.ResponseWriter, req *http.Request) {
+	h.Infow("Fetch", "Request URI", req.RequestURI, "Full Path", h.FullPath())
+	f, err := os.Stat(h.base)
+	h.Infow("Fetch", "Stat Base", h.base, "Error?", err != nil)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	h.Infow("Fetch", "Is directory?", f.IsDir())
 	hndlr := http.StripPrefix(h.FullPath().String(), http.FileServer(http.Dir(h.base)))
 	hndlr.ServeHTTP(w, req)
 }

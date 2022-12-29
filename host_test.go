@@ -9,6 +9,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"go.uber.org/zap"
 )
 
 var _ = Describe("Host", func() {
@@ -30,6 +31,9 @@ var _ = Describe("Host", func() {
 		})
 		It("should have an empty resource map", func() {
 			Expect(caHost.TopLevelResourceCount()).To(BeZero())
+		})
+		It("should have a nil logger eventually", func() {
+			Expect(caHost.Logger()).To(BeNil())
 		})
 	})
 	Describe("Usage", func() {
@@ -150,5 +154,19 @@ var _ = Describe("Host", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(string(respData4)).To(Equal(expContents4))
 		})
+		It("should be possible to set the logger non-recursively", func() {
+			Expect(caHost.AddResource(NewHTML("", htmlDir))).ToNot(HaveOccurred())
+			l, err := zap.NewProduction()
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(caHost.Logger()).To(BeNil())
+			caHost.SetLogger(l.Sugar(), false)
+			Expect(caHost.Logger()).ToNot(BeNil())
+			Expect(caHost.(*host).resources[""].Logger()).To(BeNil())
+			caHost.SetLogger(nil, false)
+			Expect(caHost.Logger()).To(BeNil())
+			Expect(caHost.(*host).resources[""].Logger()).To(BeNil())
+		})
+
 	})
 })

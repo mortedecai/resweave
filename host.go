@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 // Host represents a unique Host to serve resources for.
@@ -22,6 +24,7 @@ type Host interface {
 	GetResource(name ResourceName) (res Resource, found bool)
 	// Serve handles serving the resources under the Host.
 	Serve(w http.ResponseWriter, req *http.Request)
+	logHolder
 }
 
 // HostName is a type for managing host names in the resweave system.
@@ -38,10 +41,13 @@ type HostMap map[HostName]Host
 type host struct {
 	name      HostName
 	resources ResourceMap
+	logHolder
 }
 
 func newHost(name HostName) Host {
-	return &host{name: name, resources: make(ResourceMap)}
+	h := &host{name: name, resources: make(ResourceMap)}
+	h.logHolder = newLogholder(string(name.StripPort()), h.recurse)
+	return h
 }
 
 func (h *host) Name() HostName {
@@ -54,13 +60,16 @@ func (h *host) TopLevelResourceCount() int {
 
 func (h *host) AddResource(r Resource) error {
 	if r == nil {
+		h.Infow("AddResource", "Error", "resource was nil")
 		return errors.New("cannot add a nil resource")
 	}
 
 	if _, found := h.resources[r.Name()]; found {
+		h.Infow("AddResource", "Name", r.Name(), "Exists?", found)
 		return fmt.Errorf(FmtResourceAlreadyExists, r.Name(), h.Name())
 	}
 	h.resources[r.Name()] = r
+	h.Infow("AddResource", "Name", fmt.Sprintf("'%s'", r.Name()), "Added", true)
 	return nil
 }
 
@@ -70,16 +79,28 @@ func (h *host) GetResource(name ResourceName) (res Resource, found bool) {
 }
 
 func (h *host) Serve(w http.ResponseWriter, req *http.Request) {
+	h.Infow("Serve", "Host Name", h.Name(), "Request URI", req.RequestURI)
 	pathSegs := strings.Split(req.URL.Path, "/")[1:]
 	reqPaths := ResourceNames(pathSegs)
 
-	if res, found := h.GetResource(reqPaths[0]); found {
+	res, found := h.GetResource(reqPaths[0])
+	h.Infow("Serve", "Request Path:", reqPaths[0], "Found?", found)
+	if found {
 		res.(HTMLResource).Fetch(w, req)
 		return
 	}
-	if res, found := h.GetResource(ResourceName("")); found {
+	res, found = h.GetResource(ResourceName(""))
+	h.Infow("Serve", "Request Path:", "''", "Found?", found)
+	if found {
 		res.(HTMLResource).Fetch(w, req)
 		return
 	}
+	h.Infow("Serve", "Hard Return Code", http.StatusNotFound)
 	w.WriteHeader(http.StatusNotFound)
+}
+
+func (h *host) recurse(logger *zap.SugaredLogger) {
+	for _, v := range h.resources {
+		v.SetLogger(logger, true)
+	}
 }
