@@ -33,10 +33,12 @@ func (h *htmlResource) Name() ResourceName {
 }
 
 func (h *htmlResource) Fetch(w http.ResponseWriter, req *http.Request) {
-	h.Infow("Fetch", "Request URI", req.RequestURI, "Full Path", h.FullPath())
+	h.Infow("Fetch", "RequestURI", req.RequestURI, "Full Path", h.FullPath())
+	h.Infow("Fetch", "URL", req.URL.String(), "Full Path", h.FullPath())
+	h.Infow("Fetch", "Path", req.URL.Path, "Full Path", h.FullPath())
 	f, err := os.Stat(h.base)
-	h.Infow("Fetch", "Stat Base", h.base, "Error?", err != nil)
 	if err != nil {
+		h.Infow("Fetch", "Stat Base", h.base, "Error?", err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

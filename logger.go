@@ -1,6 +1,10 @@
 package resweave
 
-import "go.uber.org/zap"
+import (
+	"fmt"
+
+	"go.uber.org/zap"
+)
 
 type logHolder interface {
 	Logger() *zap.SugaredLogger
@@ -29,6 +33,7 @@ func (l *logholder) Logger() *zap.SugaredLogger {
 
 func (l *logholder) setLoggerName(logger *zap.SugaredLogger) *zap.SugaredLogger {
 	if logger == nil {
+		fmt.Println("logger was nil")
 		return logger
 	}
 	return logger.Named(l.name)

@@ -2,23 +2,23 @@ services:
   multihosthello:
     image: golang:alpine
     volumes:
-      - ../../../../:/go/src/github.com/agilitree/resweave
-    working_dir: /go/src/github.com/agilitree/resweave/testing/integration/html/multihosthello
+      - ../../../../:/go/src/github.com/mortedecai/resweave
+    working_dir: /go/src/github.com/mortedecai/resweave/testing/integration/html/multihosthello
     command: ["go", "run", "multihosthello.go"]
     ports:
       - 8080:8080
     networks:
       backend:
         aliases:
-          - agilitree.ca
-          - agilitree-ca
-          - agilitree
+          - mortedecai.ca
+          - mortedecai-ca
+          - mortedecai
 
   libtest:
     image: golang:1.19.4
     volumes:
-      - ../../../../:/go/src/github.com/agilitree/resweave
-    working_dir: /go/src/github.com/agilitree/resweave/testing/integration/html/multihosthello
+      - ../../../../:/go/src/github.com/mortedecai/resweave
+    working_dir: /go/src/github.com/mortedecai/resweave/testing/integration/html/multihosthello
     command: [ "go", "run", "github.com/onsi/ginkgo/v2/ginkgo", "-r", "--randomize-all", "--randomize-suites", "--fail-on-pending", "--keep-going", "--race", "--trace", "--json-report=report.json", "--output-dir=../../../../.reports/", "--keep-separate-reports", "--junit-report=report.xml" ]
     networks:
       - backend

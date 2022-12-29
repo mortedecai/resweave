@@ -89,7 +89,7 @@ func (s *server) getDefaultHost() Host {
 }
 
 func (s *server) serve(w http.ResponseWriter, req *http.Request) {
-	s.Infow("serve", "Request URI", req.URL, "Host", req.Host, "Request", req)
+	s.Infow("serve", "Request URI", req.URL, "Host", req.Host, "Header", req.Header)
 	var host Host = s.getDefaultHost()
 	hostname := HostName(req.Host)
 

@@ -101,6 +101,6 @@ func (h *host) Serve(w http.ResponseWriter, req *http.Request) {
 
 func (h *host) recurse(logger *zap.SugaredLogger) {
 	for _, v := range h.resources {
-		v.SetLogger(logger, true)
+		v.SetLogger(logger.Named(string(h.name)), true)
 	}
 }

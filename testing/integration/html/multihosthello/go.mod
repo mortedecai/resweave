@@ -1,9 +1,9 @@
-module agilitree/resweave/multihosthellotest
+module mortedecai/resweave/multihosthellotest
 
 go 1.19
 
 require (
-	github.com/agilitree/resweave v0.0.0
+	github.com/mortedecai/resweave v0.0.0
 	github.com/onsi/ginkgo/v2 v2.6.1
 	github.com/onsi/gomega v1.24.2
 )
