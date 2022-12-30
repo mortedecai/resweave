@@ -31,6 +31,7 @@ var _ = Describe("Server", func() {
 			Expect(s).ToNot(BeNil())
 			Expect(s.Port()).To(Equal(port))
 			Expect(s.(*server).Logger()).To(BeNil())
+			Expect(s.(*server).interceptor).ToNot(BeNil())
 		})
 		It("should be possible to create a new http.Server with the appropriate timeouts", func() {
 			srv := s.(*server).createHTTPServer()
@@ -69,7 +70,41 @@ var _ = Describe("Server", func() {
 			Expect(s.(*server).Logger()).To(BeNil())
 			Expect(s.(*server).hosts[""].Logger()).To(BeNil())
 		})
+		It("should be possible to add an interceptor", func() {
+			ic1 := 0
+			ic2 := 0
 
+			recorder := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			s.(*server).interceptor.ServeHTTP(recorder, req)
+			Expect(ic1).To(BeZero())
+			Expect(ic2).To(BeZero())
+
+			s.AddInterceptor(func(next http.Handler) http.Handler {
+				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					ic1++
+					next.ServeHTTP(w, r)
+				})
+			})
+			recorder = httptest.NewRecorder()
+			req = httptest.NewRequest(http.MethodGet, "/", nil)
+			s.(*server).interceptor.ServeHTTP(recorder, req)
+			Expect(ic1).To(Equal(1))
+			Expect(ic2).To(BeZero())
+
+			s.AddInterceptor(func(next http.Handler) http.Handler {
+				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					ic2++
+					next.ServeHTTP(w, r)
+				})
+			})
+			recorder = httptest.NewRecorder()
+			req = httptest.NewRequest(http.MethodGet, "/", nil)
+			s.(*server).interceptor.ServeHTTP(recorder, req)
+			Expect(ic1).To(Equal(2))
+			Expect(ic2).To(Equal(1))
+
+		})
 	})
 	Describe("Host Names", func() {
 		var (

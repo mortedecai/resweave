@@ -35,6 +35,9 @@ type Server interface {
 	Port() int
 	// Sets the logger to use for the server, and if recursive is true, to each of the hosts and resources.
 	SetLogger(logger *zap.SugaredLogger, recursive bool)
+	// AddInterceptor adds a new interceptor at the start of the handling chain.
+	// For example, on an incoming request, _next_ will be called first, with any current interceptors being
+	AddInterceptor(func(next http.Handler) http.Handler)
 }
 
 const (
@@ -53,12 +56,14 @@ func NewServer(port int) Server {
 	s := &server{port: port, hosts: make(HostMap)}
 	s.hosts[defaultHostName] = newHost(defaultHostName)
 	s.logHolder = newLogholder("<srv>", s.recurse)
+	s.interceptor = http.HandlerFunc(s.serve)
 	return s
 }
 
 type server struct {
-	port  int
-	hosts HostMap
+	port        int
+	hosts       HostMap
+	interceptor http.Handler
 	logHolder
 }
 
@@ -103,7 +108,7 @@ func (s *server) serve(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *server) Run() error {
-	http.HandleFunc("/", s.serve)
+	http.Handle("/", s.interceptor)
 	return s.createHTTPServer().ListenAndServe()
 }
 
@@ -127,4 +132,8 @@ func (s *server) AddHost(name HostName) (Host, error) {
 func (s *server) GetHost(name HostName) (h Host, f bool) {
 	h, f = s.hosts[name]
 	return
+}
+
+func (s *server) AddInterceptor(f func(next http.Handler) http.Handler) {
+	s.interceptor = f(s.interceptor)
 }
