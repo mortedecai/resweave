@@ -70,8 +70,17 @@ var _ = Describe("Host", func() {
 			s := l.Sugar()
 			caHost.SetLogger(s, true)
 			Expect(caHost.AddResource(usersRes)).ToNot(HaveOccurred())
-			dataBytes := []byte("Hello, World!")
-			expContents := string(dataBytes)
+			expContents := "Hello, World!"
+			usersRes.(*BaseAPIRes).SetList(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				respBytes := []byte(expContents)
+				if bw, err := w.Write(respBytes); err != nil {
+					s.Infow("List", "WriteError", err, "BytesWritten", bw)
+				} else {
+					s.Debugw("List", "BytesWritten", bw)
+				}
+			})
+
 			recorder := httptest.NewRecorder()
 			req, err := http.NewRequest(http.MethodGet, usersPath, nil)
 			Expect(err).ToNot(HaveOccurred())

@@ -9,18 +9,21 @@ type APIResource interface {
 	logHolder
 	Resource
 	List(w http.ResponseWriter, req *http.Request)
+	SetList(f ListFunc)
 }
 
 // BaseAPIRes supplies the basic building blocks for an APIResource.
 // It may be used through composition
 type BaseAPIRes struct {
 	logHolder
-	name ResourceName
+	name     ResourceName
+	listFunc ListFunc
 }
 
 // NewAPI creates a new APIResource instance with the provided name.
 func NewAPI(name ResourceName) APIResource {
 	bar := &BaseAPIRes{name: name, logHolder: newLogholder(name.String(), nil)}
+	bar.listFunc = bar.defaultFunction
 	return bar
 }
 
@@ -28,12 +31,14 @@ func (bar *BaseAPIRes) Name() ResourceName {
 	return bar.name
 }
 
-func (bar *BaseAPIRes) List(w http.ResponseWriter, _ *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	respBytes := []byte("Hello, World!")
-	if bw, err := w.Write(respBytes); err != nil {
-		bar.Infow("List", "WriteError", err, "BytesWritten", bw)
-	} else {
-		bar.Debugw("List", "BytesWritten", bw)
-	}
+func (bar *BaseAPIRes) defaultFunction(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
+}
+
+func (bar *BaseAPIRes) List(w http.ResponseWriter, req *http.Request) {
+	bar.listFunc(w, req)
+}
+
+func (bar *BaseAPIRes) SetList(f ListFunc) {
+	bar.listFunc = f
 }

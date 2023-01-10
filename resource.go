@@ -9,6 +9,8 @@ import (
 // ResourceName is the identifier for the resource
 type ResourceName string
 
+type ListFunc func(w http.ResponseWriter, req *http.Request)
+
 // ResourceNames is a slice of ResourceName instances
 func ResourceNames(n []string) []ResourceName {
 	names := make([]ResourceName, len(n))

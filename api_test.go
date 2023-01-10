@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/agilitree/resweave"
+	"github.com/mortedecai/resweave"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
@@ -67,7 +67,33 @@ var _ = Describe("Api", func() {
 		BeforeEach(func() {
 			res = resweave.NewAPI("")
 		})
+		It("should return a 405 if the List function has not been supplied", func() {
+			recorder := httptest.NewRecorder()
+			req, err := http.NewRequest(http.MethodGet, "/", nil)
+			Expect(err).ToNot(HaveOccurred())
+
+			res.List(recorder, req)
+			response := recorder.Result()
+			defer response.Body.Close()
+			Expect(response.StatusCode).To(Equal(http.StatusMethodNotAllowed))
+		})
 		It("should allow a List function to be called", func() {
+			var s *zap.SugaredLogger
+			if l, err := zap.NewDevelopment(); err == nil {
+				s = l.Sugar()
+			} else {
+				Expect(err).ToNot(HaveOccurred())
+			}
+
+			res.SetList(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				respBytes := []byte("Hello, World!")
+				if bw, err := w.Write(respBytes); err != nil {
+					s.Infow("List", "WriteError", err, "BytesWritten", bw)
+				} else {
+					s.Debugw("List", "BytesWritten", bw)
+				}
+			})
 			expContents := "Hello, World!"
 			recorder := httptest.NewRecorder()
 			req, err := http.NewRequest(http.MethodGet, "/", nil)

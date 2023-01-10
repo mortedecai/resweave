@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/agilitree/resweave"
+	"github.com/mortedecai/resweave"
 	"go.uber.org/zap"
 )
 
