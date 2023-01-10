@@ -36,7 +36,57 @@ var _ = Describe("Host", func() {
 			Expect(caHost.Logger()).To(BeNil())
 		})
 	})
-	Describe("Usage", func() {
+	Describe("API Usage", func() {
+		const (
+			usersName = ResourceName("users")
+			usersPath = "/users"
+		)
+		var (
+			usersRes Resource
+		)
+
+		BeforeEach(func() {
+			usersRes = NewAPI(usersName)
+		})
+		It("should be possible to add a named API resource", func() {
+			Expect(caHost.AddResource(usersRes)).ToNot(HaveOccurred())
+		})
+		It("should be possible to retrieve the resource after adding an unnamed resource", func() {
+			Expect(caHost.AddResource(usersRes)).ToNot(HaveOccurred())
+			Expect(caHost.TopLevelResourceCount()).To(Equal(1))
+			res, found := caHost.GetResource(usersName)
+			Expect(found).To(BeTrue())
+			Expect(res).To(Equal(usersRes))
+		})
+		It("should return an error if two unnamed resources are added", func() {
+			Expect(caHost.AddResource(usersRes)).ToNot(HaveOccurred())
+			Expect(caHost.TopLevelResourceCount()).To(Equal(1))
+			Expect(caHost.AddResource(usersRes)).To(HaveOccurred())
+			Expect(caHost.AddResource(usersRes)).To(Equal(fmt.Errorf(FmtResourceAlreadyExists, usersRes.Name(), caHost.Name())))
+			Expect(caHost.TopLevelResourceCount()).To(Equal(1))
+		})
+		It("should serve a named api resource correctly", func() {
+			l, _ := zap.NewDevelopment()
+			s := l.Sugar()
+			caHost.SetLogger(s, true)
+			Expect(caHost.AddResource(usersRes)).ToNot(HaveOccurred())
+			dataBytes := []byte("Hello, World!")
+			expContents := string(dataBytes)
+			recorder := httptest.NewRecorder()
+			req, err := http.NewRequest(http.MethodGet, usersPath, nil)
+			Expect(err).ToNot(HaveOccurred())
+
+			caHost.Serve(recorder, req)
+			response := recorder.Result()
+			defer response.Body.Close()
+			Expect(response.StatusCode).To(Equal(http.StatusOK))
+			respData, err := io.ReadAll(response.Body)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(respData)).To(Equal(expContents))
+		})
+
+	})
+	Describe("HTML Usage", func() {
 		const (
 			htmlDir  = "testing/html/"
 			htmlDir2 = "testing/html2/"

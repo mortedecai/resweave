@@ -2,9 +2,10 @@ go 1.19
 
 use (
 	./
+	./testing/integration/api/hello
 	./testing/integration/html/hello
 	./testing/integration/html/multihosthello
 	./testing/integration/html/multiroothello
 )
 
-replace github.com/mortedecai/resweave v0.0.0 => ./
+replace github.com/mortedecai/resweave v0.0.4 => ./

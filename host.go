@@ -78,6 +78,18 @@ func (h *host) GetResource(name ResourceName) (res Resource, found bool) {
 	return
 }
 
+func (h *host) handleRequest(res Resource, w http.ResponseWriter, req *http.Request) {
+	if r, ok := res.(ResourceFetcher); ok {
+		r.Fetch(w, req)
+		return
+	}
+	if r, ok := res.(ResourceLister); ok {
+		r.List(w, req)
+		return
+	}
+	w.WriteHeader(http.StatusMethodNotAllowed)
+}
+
 func (h *host) Serve(w http.ResponseWriter, req *http.Request) {
 	h.Infow("Serve", "Host Name", h.Name(), "Request URI", req.RequestURI)
 	pathSegs := strings.Split(req.URL.Path, "/")[1:]
@@ -86,13 +98,13 @@ func (h *host) Serve(w http.ResponseWriter, req *http.Request) {
 	res, found := h.GetResource(reqPaths[0])
 	h.Infow("Serve", "Request Path:", reqPaths[0], "Found?", found)
 	if found {
-		res.(HTMLResource).Fetch(w, req)
+		h.handleRequest(res, w, req)
 		return
 	}
 	res, found = h.GetResource(ResourceName(""))
 	h.Infow("Serve", "Request Path:", "''", "Found?", found)
 	if found {
-		res.(HTMLResource).Fetch(w, req)
+		res.(ResourceFetcher).Fetch(w, req)
 		return
 	}
 	h.Infow("Serve", "Hard Return Code", http.StatusNotFound)

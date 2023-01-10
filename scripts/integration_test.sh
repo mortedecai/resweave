@@ -22,6 +22,7 @@ pushd ${PROJECT_ROOT}
 MODULE_NAME="$(grep 'module' go.mod | sed -E 's/^module[[:space:]]*//g')"
 INTEGRATION_DIR=${PROJECT_ROOT}/testing/integration
 HTML_INTEGRATION_DIR=${INTEGRATION_DIR}/html
+API_INTEGRATION_DIR=${INTEGRATION_DIR}/api
 
 source ${PROJECT_ROOT}/scripts/status.sh
 source ${PROJECT_ROOT}/scripts/log.sh
@@ -50,12 +51,50 @@ test_html() {
     done
 }
 
+test_api() {
+    echo "******** RUNNING API INTEGRATION TESTS ********"
+    pushd ${API_INTEGRATION_DIR}
+    _DIRS=$(ls -1)
+    for file in ${_DIRS}
+    do
+        if [[ -d ${file} ]]; then
+            echo "DIRECTORY: ${file}"
+            pushd ${file}
+            docker-compose up ${file} &
+            sleep 1
+            docker-compose up libtest
+            TEST_RESULT=$?
+            docker-compose down
+            if [[ ${TEST_RESULT} != 0 ]]; then
+                echo "---- TESTS FAILED ${file} ----"
+                exit  ${TEST_RESULT}
+            fi
+            popd
+        else
+          echo "**** SKIPPING ${file} ****"
+        fi
+    done
+}
+
+test_all() {
+    test_html
+    test_api
+}
 
 if [ $# = 0 ]; then
-  test_html
+  test_all
 else
     case $1 in
+      all)
+        echo "Running ALL tests"
+        test_all
+        ;;
+      api)
+        echo "Running API tests"
+        test_api
+        ;;
       html)
+        echo "Running HTML tests"
         test_html
         ;;
       *)
