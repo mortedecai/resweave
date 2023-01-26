@@ -1,14 +1,14 @@
 package resweave
 
 import (
+	"context"
 	"net/http"
 )
 
 // APIResource is a basic APIResource which has a single point of entry for serving the supported access methods.
 type APIResource interface {
 	logHolder
-	Resource
-	List(w http.ResponseWriter, req *http.Request)
+	ResourceLister
 	SetList(f ListFunc)
 }
 
@@ -31,12 +31,12 @@ func (bar *BaseAPIRes) Name() ResourceName {
 	return bar.name
 }
 
-func (bar *BaseAPIRes) defaultFunction(w http.ResponseWriter, _ *http.Request) {
+func (bar *BaseAPIRes) defaultFunction(_ context.Context, w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func (bar *BaseAPIRes) List(w http.ResponseWriter, req *http.Request) {
-	bar.listFunc(w, req)
+func (bar *BaseAPIRes) List(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+	bar.listFunc(ctx, w, req)
 }
 
 func (bar *BaseAPIRes) SetList(f ListFunc) {

@@ -1,6 +1,7 @@
 package resweave
 
 import (
+	"context"
 	"net/http"
 
 	"go.uber.org/zap"
@@ -9,7 +10,7 @@ import (
 // ResourceName is the identifier for the resource
 type ResourceName string
 
-type ListFunc func(w http.ResponseWriter, req *http.Request)
+type ListFunc func(ctx context.Context, w http.ResponseWriter, req *http.Request)
 
 // ResourceNames is a slice of ResourceName instances
 func ResourceNames(n []string) []ResourceName {
@@ -35,31 +36,31 @@ type Resource interface {
 // ResourceLister interface defines the operations necessary for any Resource which provides resource List functionality
 type ResourceLister interface {
 	Resource
-	List(http.ResponseWriter, *http.Request)
+	List(context.Context, http.ResponseWriter, *http.Request)
 }
 
 // ResourceCreator interface defines the operations necessary for any Resource which provides resource Create functionality
 type ResourceCreator interface {
 	Resource
-	Create(http.ResponseWriter, *http.Request)
+	Create(context.Context, http.ResponseWriter, *http.Request)
 }
 
 // ResourceFetcher interface defines the operations necessary for any Resource which provides resource Fetch functionality
 type ResourceFetcher interface {
 	Resource
-	Fetch(http.ResponseWriter, *http.Request)
+	Fetch(context.Context, http.ResponseWriter, *http.Request)
 }
 
 // ResourceUpdater interface defines the operations necessary for any Resource which provides resource Update functionality
 type ResourceUpdater interface {
 	Resource
-	Update(http.ResponseWriter, *http.Request)
+	Update(context.Context, http.ResponseWriter, *http.Request)
 }
 
 // ResourceDeleter interface defines the operations necessary for any Resource which provides resource Delete functionality
 type ResourceDeleter interface {
 	Resource
-	Delete(http.ResponseWriter, *http.Request)
+	Delete(context.Context, http.ResponseWriter, *http.Request)
 }
 
 // ResourceMap is a type alias for a map of ResourceNames to Resources (map[ResourceName]Resource)

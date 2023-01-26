@@ -1,6 +1,7 @@
 package resweave_test
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -57,7 +58,7 @@ var _ = Describe("Html", func() {
 			req, err := http.NewRequest(http.MethodGet, "/", nil)
 			Expect(err).ToNot(HaveOccurred())
 
-			htmlRes.Fetch(recorder, req)
+			htmlRes.Fetch(context.TODO(), recorder, req)
 			response := recorder.Result()
 			defer response.Body.Close()
 			Expect(response.StatusCode).To(Equal(http.StatusOK))
@@ -91,7 +92,7 @@ var _ = Describe("Html", func() {
 			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/%s/", name), nil)
 			Expect(err).ToNot(HaveOccurred())
 
-			htmlRes.Fetch(recorder, req)
+			htmlRes.Fetch(context.TODO(), recorder, req)
 			response := recorder.Result()
 			defer response.Body.Close()
 			Expect(response.StatusCode).To(Equal(http.StatusOK))

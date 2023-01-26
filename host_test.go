@@ -1,6 +1,7 @@
 package resweave
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -71,7 +72,7 @@ var _ = Describe("Host", func() {
 			caHost.SetLogger(s, true)
 			Expect(caHost.AddResource(usersRes)).ToNot(HaveOccurred())
 			expContents := "Hello, World!"
-			usersRes.(*BaseAPIRes).SetList(func(w http.ResponseWriter, _ *http.Request) {
+			usersRes.(*BaseAPIRes).SetList(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusOK)
 				respBytes := []byte(expContents)
 				if bw, err := w.Write(respBytes); err != nil {

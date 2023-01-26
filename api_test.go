@@ -1,6 +1,7 @@
 package resweave_test
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -72,7 +73,7 @@ var _ = Describe("Api", func() {
 			req, err := http.NewRequest(http.MethodGet, "/", nil)
 			Expect(err).ToNot(HaveOccurred())
 
-			res.List(recorder, req)
+			res.List(context.TODO(), recorder, req)
 			response := recorder.Result()
 			defer response.Body.Close()
 			Expect(response.StatusCode).To(Equal(http.StatusMethodNotAllowed))
@@ -85,7 +86,7 @@ var _ = Describe("Api", func() {
 				Expect(err).ToNot(HaveOccurred())
 			}
 
-			res.SetList(func(w http.ResponseWriter, _ *http.Request) {
+			res.SetList(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusOK)
 				respBytes := []byte("Hello, World!")
 				if bw, err := w.Write(respBytes); err != nil {
@@ -99,7 +100,7 @@ var _ = Describe("Api", func() {
 			req, err := http.NewRequest(http.MethodGet, "/", nil)
 			Expect(err).ToNot(HaveOccurred())
 
-			res.List(recorder, req)
+			res.List(context.TODO(), recorder, req)
 			response := recorder.Result()
 			defer response.Body.Close()
 			Expect(response.StatusCode).To(Equal(http.StatusOK))
