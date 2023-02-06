@@ -58,7 +58,7 @@ var _ = Describe("Html", func() {
 			req, err := http.NewRequest(http.MethodGet, "/", nil)
 			Expect(err).ToNot(HaveOccurred())
 
-			htmlRes.Fetch(context.TODO(), recorder, req)
+			htmlRes.HandleCall(context.TODO(), recorder, req)
 			response := recorder.Result()
 			defer response.Body.Close()
 			Expect(response.StatusCode).To(Equal(http.StatusOK))
@@ -92,7 +92,7 @@ var _ = Describe("Html", func() {
 			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/%s/", name), nil)
 			Expect(err).ToNot(HaveOccurred())
 
-			htmlRes.Fetch(context.TODO(), recorder, req)
+			htmlRes.HandleCall(context.TODO(), recorder, req)
 			response := recorder.Result()
 			defer response.Body.Close()
 			Expect(response.StatusCode).To(Equal(http.StatusOK))

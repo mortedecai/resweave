@@ -13,6 +13,7 @@ require (
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/mortedecai/resweave v0.0.4 // indirect
+	github.com/mortedecai/resweave v0.0.6-0.20230205230412-79741a218120 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/net v0.4.0 // indirect

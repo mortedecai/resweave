@@ -26,7 +26,8 @@ source ${PROJECT_ROOT}/scripts/status.sh
 source ${PROJECT_ROOT}/scripts/log.sh
 
 generate_coverage() {
-    go test $1 $(grep "module" ${PROJECT_ROOT}/go.mod | sed -E "s/^module[[:space:]]*//g")
+    GOPRIVATE=github.com/agilitree go get -u
+    GOPRIVATE=github.com/agilitree go test $1 $(grep "module" ${PROJECT_ROOT}/go.mod | sed -E "s/^module[[:space:]]*//g")
 }
 
 generate_coverage_file() {

@@ -1,25 +1,26 @@
 services:
-  hello:
-    image: golang:alpine
+  server:
+    image: ubuntu:latest
     volumes:
-      - ../../../../:/go/src/github.com/mortedecai/resweave
-    working_dir: /go/src/github.com/mortedecai/resweave/testing/integration/html/hello
-    command: ["go", "run", "hello.go"]
+      - ./:/go/src/resweave
+    working_dir: /go/src/resweave
+    command: ["./bin/server"]
+    #command: ["ls", "-F", "./bin/server"]
     ports:
       - 8080:8080
     networks:
       - backend
 
   libtest:
-    image: golang:1.19.4
+    image: ubuntu:latest
     volumes:
-      - ../../../../:/go/src/github.com/mortedecai/resweave
-    working_dir: /go/src/github.com/mortedecai/resweave/testing/integration/html/hello
-    command: [ "go", "run", "github.com/onsi/ginkgo/v2/ginkgo", "-r", "--randomize-all", "--randomize-suites", "--fail-on-pending", "--keep-going", "--race", "--trace", "--json-report=report.json", "--output-dir=../../../../.reports/", "--keep-separate-reports", "--junit-report=report.xml" ]
+      - ./:/go/src/resweave
+    working_dir: /go/src/resweave
+    command: ["./bin/test" ]
+    #command: ["ls", "-F","./bin/test" ]
     environment:
-      - HOST_NAME=hello
+      - HOST_NAME=server
     networks:
       - backend
 networks:
   backend: {}
-

@@ -34,6 +34,25 @@ var _ = Describe("Api", func() {
 			Expect(res).ToNot(BeNil())
 			Expect(res.Name()).To(Equal(name))
 		})
+		It("should return a 405 for all methods initially", func() {
+			testData := []struct {
+				method string
+				path   string
+			}{
+				{http.MethodGet, "/"},
+				{http.MethodPost, "/"},
+				{http.MethodPut, "/"},
+				{http.MethodPatch, "/"},
+				{http.MethodDelete, "/"},
+				{"NOSUCHMETHOD", "/"},
+			}
+			for _, v := range testData {
+				req, err := http.NewRequest(v.method, v.path, nil)
+				Expect(err).ToNot(HaveOccurred())
+				resultsMatch(http.StatusMethodNotAllowed, res, req)
+			}
+
+		})
 	})
 	var _ = Describe("Logger handling", func() {
 		var (
@@ -73,7 +92,7 @@ var _ = Describe("Api", func() {
 			req, err := http.NewRequest(http.MethodGet, "/", nil)
 			Expect(err).ToNot(HaveOccurred())
 
-			res.List(context.TODO(), recorder, req)
+			res.HandleCall(context.TODO(), recorder, req)
 			response := recorder.Result()
 			defer response.Body.Close()
 			Expect(response.StatusCode).To(Equal(http.StatusMethodNotAllowed))
@@ -99,15 +118,84 @@ var _ = Describe("Api", func() {
 			recorder := httptest.NewRecorder()
 			req, err := http.NewRequest(http.MethodGet, "/", nil)
 			Expect(err).ToNot(HaveOccurred())
+			req2, err := http.NewRequest(http.MethodPost, "/", nil)
+			Expect(err).ToNot(HaveOccurred())
 
-			res.List(context.TODO(), recorder, req)
+			res.HandleCall(context.TODO(), recorder, req)
 			response := recorder.Result()
 			defer response.Body.Close()
 			Expect(response.StatusCode).To(Equal(http.StatusOK))
 			respData, err := io.ReadAll(response.Body)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(string(respData)).To(Equal(expContents))
+			respData, err = resultsMatch(http.StatusMethodNotAllowed, res, req2)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(respData)).To(Equal(""))
 		})
+		It("should allow a Create function to be called", func() {
+			var s *zap.SugaredLogger
+			if l, err := zap.NewDevelopment(); err == nil {
+				s = l.Sugar()
+			} else {
+				Expect(err).ToNot(HaveOccurred())
+			}
 
+			res.SetCreate(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusCreated)
+				respBytes := []byte("{}")
+				if bw, err := w.Write(respBytes); err != nil {
+					s.Infow("Create", "WriteError", err, "BytesWritten", bw)
+				} else {
+					s.Debugw("Create", "BytesWritten", bw)
+				}
+			})
+			expContents := "{}"
+			req, err := http.NewRequest(http.MethodPost, "/", nil)
+			Expect(err).ToNot(HaveOccurred())
+			req2, err := http.NewRequest(http.MethodGet, "/", nil)
+			Expect(err).ToNot(HaveOccurred())
+			respData, err := resultsMatch(http.StatusCreated, res, req)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(respData)).To(Equal(expContents))
+			respData, err = resultsMatch(http.StatusMethodNotAllowed, res, req2)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(respData)).To(Equal(""))
+		})
+		It("should be possible to add all viable functions to an API resource", func() {
+			res.SetCreate(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusCreated)
+			})
+			res.SetList(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			})
+			testData := []struct {
+				method    string
+				path      string
+				expStatus int
+			}{
+				{http.MethodGet, "/", http.StatusOK},
+				{http.MethodPost, "/", http.StatusCreated},
+				/* TODO:  Uncomment as these methods are added */
+				// {http.MethodPut, "/"},
+				// {http.MethodPatch, "/"},
+				// {http.MethodDelete, "/"},
+				{"NOSUCHMETHOD", "/", http.StatusMethodNotAllowed},
+			}
+			for _, v := range testData {
+				req, err := http.NewRequest(v.method, v.path, nil)
+				Expect(err).ToNot(HaveOccurred())
+				resultsMatch(v.expStatus, res, req)
+			}
+
+		})
 	})
 })
+
+func resultsMatch(expStatusCode int, res resweave.Resource, req *http.Request) ([]byte, error) {
+	recorder := httptest.NewRecorder()
+	res.HandleCall(context.TODO(), recorder, req)
+	response := recorder.Result()
+	defer response.Body.Close()
+	Expect(response.StatusCode).To(Equal(expStatusCode))
+	return io.ReadAll(response.Body)
+}

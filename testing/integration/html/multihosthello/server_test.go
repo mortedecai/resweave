@@ -15,7 +15,7 @@ var _ = Describe("Multi Host Hello", func() {
 			data, err := os.ReadFile("html/default/index.html")
 			Expect(err).ToNot(HaveOccurred())
 			expContents := string(data)
-			resp, err := http.Get("http://multihosthello/")
+			resp, err := http.Get("http://server/")
 			Expect(err).ToNot(HaveOccurred())
 			defer resp.Body.Close()
 			respData, err := io.ReadAll(resp.Body)

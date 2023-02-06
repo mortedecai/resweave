@@ -1,10 +1,10 @@
 services:
-  multihosthello:
-    image: golang:alpine
+  server:
+    image: ubuntu:latest
     volumes:
-      - ../../../../:/go/src/github.com/mortedecai/resweave
-    working_dir: /go/src/github.com/mortedecai/resweave/testing/integration/html/multihosthello
-    command: ["go", "run", "multihosthello.go"]
+      - ./:/go/src/github.com/mortedecai/resweave
+    working_dir: /go/src/github.com/mortedecai/resweave
+    command: ["./bin/server"]
     ports:
       - 8080:8080
     networks:
@@ -15,21 +15,17 @@ services:
           - mortedecai
 
   libtest:
-    image: golang:1.19.4
-    volumes:
-      - ../../../../:/go/src/github.com/mortedecai/resweave
-    working_dir: /go/src/github.com/mortedecai/resweave/testing/integration/html/multihosthello
-    command: [ "go", "run", "github.com/onsi/ginkgo/v2/ginkgo", "-r", "--randomize-all", "--randomize-suites", "--fail-on-pending", "--keep-going", "--race", "--trace", "--json-report=report.json", "--output-dir=../../../../.reports/", "--keep-separate-reports", "--junit-report=report.xml" ]
-    networks:
-      - backend
-
-  debug:
     image: ubuntu:latest
-#    command: [ "/bin/bash" ]
-    stdin_open: true
-    tty: true
+    volumes:
+      - ./:/go/src/github.com/mortedecai/resweave
+    working_dir: /go/src/github.com/mortedecai/resweave
+    command: [ "./bin/test" ]
+    environment:
+      - HOST_NAME=server
     networks:
       - backend
 networks:
   backend: {}
+
+
 

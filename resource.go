@@ -10,7 +10,7 @@ import (
 // ResourceName is the identifier for the resource
 type ResourceName string
 
-type ListFunc func(ctx context.Context, w http.ResponseWriter, req *http.Request)
+type ResweaveFunc func(ctx context.Context, w http.ResponseWriter, req *http.Request)
 
 // ResourceNames is a slice of ResourceName instances
 func ResourceNames(n []string) []ResourceName {
@@ -30,37 +30,8 @@ func (rn ResourceName) String() string {
 type Resource interface {
 	Name() ResourceName
 	Logger() *zap.SugaredLogger
+	HandleCall(context.Context, http.ResponseWriter, *http.Request)
 	SetLogger(logger *zap.SugaredLogger, recursive bool)
-}
-
-// ResourceLister interface defines the operations necessary for any Resource which provides resource List functionality
-type ResourceLister interface {
-	Resource
-	List(context.Context, http.ResponseWriter, *http.Request)
-}
-
-// ResourceCreator interface defines the operations necessary for any Resource which provides resource Create functionality
-type ResourceCreator interface {
-	Resource
-	Create(context.Context, http.ResponseWriter, *http.Request)
-}
-
-// ResourceFetcher interface defines the operations necessary for any Resource which provides resource Fetch functionality
-type ResourceFetcher interface {
-	Resource
-	Fetch(context.Context, http.ResponseWriter, *http.Request)
-}
-
-// ResourceUpdater interface defines the operations necessary for any Resource which provides resource Update functionality
-type ResourceUpdater interface {
-	Resource
-	Update(context.Context, http.ResponseWriter, *http.Request)
-}
-
-// ResourceDeleter interface defines the operations necessary for any Resource which provides resource Delete functionality
-type ResourceDeleter interface {
-	Resource
-	Delete(context.Context, http.ResponseWriter, *http.Request)
 }
 
 // ResourceMap is a type alias for a map of ResourceNames to Resources (map[ResourceName]Resource)

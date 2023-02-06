@@ -12,7 +12,7 @@ import (
 // The resource itself only supports the Fetch functionality, with the remainder of the path being an input
 // into the listener
 type HTMLResource interface {
-	ResourceFetcher
+	Resource
 	BaseDir() string
 	FullPath() ResourceName
 }
@@ -33,7 +33,7 @@ func (h *htmlResource) Name() ResourceName {
 	return h.name
 }
 
-func (h *htmlResource) Fetch(_ context.Context, w http.ResponseWriter, req *http.Request) {
+func (h *htmlResource) HandleCall(_ context.Context, w http.ResponseWriter, req *http.Request) {
 	h.Infow("Fetch", "RequestURI", req.RequestURI, "Full Path", h.FullPath())
 	h.Infow("Fetch", "URL", req.URL.String(), "Full Path", h.FullPath())
 	h.Infow("Fetch", "Path", req.URL.Path, "Full Path", h.FullPath())

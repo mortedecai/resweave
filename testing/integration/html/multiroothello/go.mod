@@ -3,7 +3,7 @@ module mortedecai/resweave/multiroothellotest
 go 1.19
 
 require (
-	github.com/mortedecai/resweave v0.0.4
+	github.com/mortedecai/resweave v0.0.6-0.20230205230412-79741a218120
 	github.com/onsi/ginkgo/v2 v2.6.1
 	github.com/onsi/gomega v1.24.2
 	go.uber.org/zap v1.24.0

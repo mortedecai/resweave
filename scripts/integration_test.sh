@@ -23,9 +23,27 @@ MODULE_NAME="$(grep 'module' go.mod | sed -E 's/^module[[:space:]]*//g')"
 INTEGRATION_DIR=${PROJECT_ROOT}/testing/integration
 HTML_INTEGRATION_DIR=${INTEGRATION_DIR}/html
 API_INTEGRATION_DIR=${INTEGRATION_DIR}/api
+EXIT_CODE_LINE="exited with code"
+EXIT_CODE_PATTERN="^.*exited with code ([[:digit:]]+).*$"
 
 source ${PROJECT_ROOT}/scripts/status.sh
 source ${PROJECT_ROOT}/scripts/log.sh
+
+run_test() {
+    file_identifier=$1
+    GOOS=linux GOARCH=amd64 go build -o bin/server server.go
+    GOOS=linux GOARCH=amd64 go test -c -o bin/test ./...
+    echo "Post-Build: ls $PWD/bin"
+    ls -F bin/
+    docker-compose -f compose.yaml up server &
+    sleep 5
+    LOG_FILE=${PROJECT_ROOT}/.reports/${file_identifier}_test.log
+    docker-compose -f compose.yaml up libtest > ${LOG_FILE} 2>&1 
+    cat ${LOG_FILE}
+    TEST_RESULT=$(cat ${LOG_FILE} | grep "${EXIT_CODE_LINE}" | sed -E "s/${EXIT_CODE_PATTERN}/\1/g")
+    echo "TEST_RESULT=${TEST_RESULT}"
+    docker-compose down
+}
 
 test_html() {
     pushd ${HTML_INTEGRATION_DIR}
@@ -35,13 +53,12 @@ test_html() {
         if [[ -d ${file} ]]; then
             echo "DIRECTORY: ${file}"
             pushd ${file}
-            docker-compose up ${file} &
-            sleep 1
-            docker-compose up libtest
-            TEST_RESULT=$?
-            docker-compose down
+            echo "Pre-Build: ls $PWD/bin"
+            mkdir -p bin
+            ls -F bin/
+            run_test "html_${file}"
             if [[ ${TEST_RESULT} != 0 ]]; then
-                echo "---- TESTS FAILED ${file} ----"
+                echo "---- TESTS FAILED ${file} (${TEST_RESULT})----"
                 exit  ${TEST_RESULT}
             fi
             popd
@@ -60,11 +77,10 @@ test_api() {
         if [[ -d ${file} ]]; then
             echo "DIRECTORY: ${file}"
             pushd ${file}
-            docker-compose up ${file} &
-            sleep 1
-            docker-compose up libtest
-            TEST_RESULT=$?
-            docker-compose down
+            echo "Pre-Build: ls $PWD/bin"
+            mkdir -p bin
+            ls -F bin/
+            run_test "html_${file}"
             if [[ ${TEST_RESULT} != 0 ]]; then
                 echo "---- TESTS FAILED ${file} ----"
                 exit  ${TEST_RESULT}
