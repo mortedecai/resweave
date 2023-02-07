@@ -189,6 +189,47 @@ var _ = Describe("Api", func() {
 
 		})
 	})
+
+	var _ = Describe("Fetch & List Handling", func() {
+		var (
+			res    resweave.APIResource
+			logger *zap.SugaredLogger
+		)
+		BeforeEach(func() {
+
+			res = resweave.NewAPI("users")
+			res.SetID(resweave.NumericID)
+
+			res.SetFetch(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusNoContent)
+			})
+
+			res.SetList(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusAccepted)
+			})
+			l, err := zap.NewDevelopment()
+			Expect(err).ToNot(HaveOccurred())
+			logger = l.Sugar()
+			res.SetLogger(logger, true)
+		})
+		It("should return the correct status code", func() {
+			testData := []struct {
+				method    string
+				path      string
+				expStatus int
+			}{
+				{http.MethodGet, res.Name().String() + "/", http.StatusAccepted},
+				{http.MethodGet, res.Name().String() + "/1", http.StatusNoContent},
+				{http.MethodGet, res.Name().String() + "/1/", http.StatusNoContent},
+				{http.MethodGet, res.Name().String() + "/a/", http.StatusNotFound},
+			}
+			for _, v := range testData {
+				req, err := http.NewRequest(v.method, v.path, nil)
+				Expect(err).ToNot(HaveOccurred())
+				resultsMatch(v.expStatus, res, req)
+			}
+		})
+	})
 })
 
 func resultsMatch(expStatusCode int, res resweave.Resource, req *http.Request) ([]byte, error) {

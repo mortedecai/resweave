@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/agilitree/resweave"
@@ -36,15 +37,58 @@ type TodoResource struct {
 	todos []Todo
 }
 
-func createTodoResource(name resweave.ResourceName) *TodoResource {
+func createTodoResource(name resweave.ResourceName) (*TodoResource, error) {
 	res := &TodoResource{
 		resweave.NewAPI(name),
 		make([]Todo, 0),
 	}
 	res.SetCreate(res.createTodo)
 	res.SetList(res.listTodos)
+	if err := res.SetID(resweave.NumericID); err != nil {
+		return nil, err
+	}
+	res.SetFetch(res.fetchTodo)
 
-	return res
+	return res, nil
+}
+
+func (tr *TodoResource) fetchTodo(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+	const curMethod = "fetchTodos"
+	var id int
+	var err error
+	var bytes []byte = make([]byte, 0)
+	if req.Method != http.MethodGet {
+		tr.Infow(curMethod, "Bad Method", req.Method, "Accepted Method(s)", http.MethodGet)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	v := ctx.Value(resweave.Key(fmt.Sprintf("id_%s", tr.Name().String())))
+	var val string
+	var ok bool
+	if val, ok = v.(string); !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if id, err = strconv.Atoi(val); err != nil {
+		tr.Infow(curMethod, "Bad ID", val, "Error", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	for _, v := range tr.todos {
+		tr.Infow(curMethod, "Fetching", id, "current", (*v.ID))
+		if (*v.ID) == id {
+			if bytes, err = json.Marshal(v); err != nil {
+				tr.Infow(curMethod, "ID", id, "Marshall Error", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			break
+		}
+	}
+	w.WriteHeader(http.StatusOK)
+	if bw, err := w.Write(bytes); err != nil {
+		tr.Debugw(curMethod, "Error Writing", err, "Bytes Written", bw)
+	}
 }
 
 func (tr *TodoResource) listTodos(_ context.Context, w http.ResponseWriter, req *http.Request) {
@@ -113,6 +157,8 @@ func main() {
 	fmt.Println("Running Server for API Integration Test: TODO")
 
 	var logger *zap.SugaredLogger
+	var todoResource *TodoResource
+	var err error
 	port, _ := env.GetWithDefaultInt(varPort, defaultPort)
 	server := resweave.NewServer(port)
 
@@ -123,7 +169,10 @@ func main() {
 		server.SetLogger(logger, true)
 	}
 
-	todoResource := createTodoResource("todos")
+	if todoResource, err = createTodoResource("todos"); err != nil {
+		logger.Errorw("main", "createTodoResource", err)
+		return
+	}
 	todoResource.SetLogger(logger, false)
 
 	if err := server.AddResource(todoResource); err == nil {

@@ -40,7 +40,7 @@ test_unit() {
 }
 
 test_integration() {
-    ${PROJECT_ROOT}/scripts/integration_test.sh $PROJECT_ROOT $@ > ${PROJECT_ROOT}/.reports/integration_tests.log 2>&1
+    ${PROJECT_ROOT}/scripts/integration_test.sh $PROJECT_ROOT $* > ${PROJECT_ROOT}/.reports/integration_tests.log 2>&1
     INT_TEST_RESULT=$?
     if [[ $SILENT_TESTS == 0 ]]; then
         cat ${PROJECT_ROOT}/.reports/integration_tests.log
@@ -59,13 +59,16 @@ if [ $# = 0 ]; then
 else
     case $1 in
       all)
+        shift
         test_all
         ;;
       unit)
+        shift
         test_unit
         ;;
       integration)
-        test_integration
+        shift
+        test_integration $*
         ;;
       *)
         usage

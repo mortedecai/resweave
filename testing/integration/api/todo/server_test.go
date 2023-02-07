@@ -86,5 +86,38 @@ var _ = Describe("Todos", Ordered, func() {
 		Expect(len(todos)).To(Equal(1))
 		Expect(todos[0]).To(Equal(expTodo))
 	})
+	It("should be possible to retrieve a single todo from a list", func() {
+		const desc = "Simple Todo"
+		var expID int = 1
+		var err error
+		expTodo := pkg.Todo{ID: &expID, Description: desc}
 
+		uri := fmt.Sprintf("http://%s:8080/todos", host)
+		response, err := http.Get(uri)
+		Expect(err).ToNot(HaveOccurred())
+		defer response.Body.Close()
+
+		Expect(response.StatusCode).To(Equal(http.StatusOK))
+		respData, err := io.ReadAll(response.Body)
+		Expect(err).ToNot(HaveOccurred())
+
+		err = json.Unmarshal(respData, &todos)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(len(todos)).To(Equal(1))
+		Expect(todos[0]).To(Equal(expTodo))
+
+		fetchUri := fmt.Sprintf("http://%s:8080/todos/%d", host, (*todos[0].ID))
+		fetchResponse, fetchErr := http.Get(fetchUri)
+		Expect(fetchErr).ToNot(HaveOccurred())
+		defer fetchResponse.Body.Close()
+
+		//Expect(fetchResponse.StatusCode).To(Equal(http.StatusTeapot))
+		Expect(fetchResponse.StatusCode).To(Equal(http.StatusOK))
+		fetchRespData, err := io.ReadAll(fetchResponse.Body)
+		Expect(err).ToNot(HaveOccurred())
+		var fetchedTodo pkg.Todo
+		err = json.Unmarshal(fetchRespData, &fetchedTodo)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(fetchedTodo).To(Equal(todos[0]))
+	})
 })
