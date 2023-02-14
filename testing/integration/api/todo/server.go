@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/agilitree/resweave"
 	"github.com/mortedecai/go-go-gadgets/env"
+	"github.com/mortedecai/resweave"
 	"go.uber.org/zap"
 )
 

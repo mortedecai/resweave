@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 usage() {
   echo "USAGE: integration_test.sh <PROJECT ROOT> [sub-command]"

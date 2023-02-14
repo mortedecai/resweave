@@ -2,8 +2,8 @@ services:
   server:
     image: ubuntu:latest
     volumes:
-      - ./:/go/src/github.com/agilitree/resweave
-    working_dir: /go/src/github.com/agilitree/resweave
+      - ./:/go/src/github.com/mortedecai/resweave
+    working_dir: /go/src/github.com/mortedecai/resweave
     command: ["./bin/server"]
     ports:
       - 8080:8080
@@ -13,8 +13,8 @@ services:
   libtest:
     image: ubuntu:latest
     volumes:
-      - ./:/go/src/github.com/agilitree/resweave
-    working_dir: /go/src/github.com/agilitree/resweave
+      - ./:/go/src/github.com/mortedecai/resweave
+    working_dir: /go/src/github.com/mortedecai/resweave
     command: [ "./bin/test" ]
     environment:
       - HOST_NAME=server

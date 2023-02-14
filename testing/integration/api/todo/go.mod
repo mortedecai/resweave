@@ -1,10 +1,10 @@
-module github.com/agilitree/resweave/testing/integration/api/todo
+module github.com/mortedecai/resweave/testing/integration/api/todo
 
 go 1.19
 
 require (
-	github.com/agilitree/resweave v0.0.6
 	github.com/mortedecai/go-go-gadgets v0.2.1
+	github.com/mortedecai/resweave v0.0.6
 	github.com/onsi/ginkgo/v2 v2.7.1
 	github.com/onsi/gomega v1.26.0
 	go.uber.org/zap v1.24.0
