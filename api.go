@@ -8,13 +8,36 @@ import (
 	"strings"
 )
 
+// Key is a key type for looking up a resweave data in the context
 type Key string
+
+// ID is a regex representation of an ID format for an API resource.
 type ID string
 
+// actionType is a type alias for resweave actions
+type actionType int
+
+// actionFuncMap is a type alias for a map of actionTypes to ResweaveFuncs
+type actionFuncMap map[actionType]ResweaveFunc
+
 const (
+	// NumericID is a default representation for a numeric identifier.
 	NumericID ID = ID("([0-9]+)")
+
+	keyPathHasSubSegment = "pathHasSubSegment_%s"
+
+	Create actionType = iota
+	List
+	Fetch
+	Update
+	Delete
 )
 
+func (at actionType) String() string {
+	return [...]string{"Create", "List", "Fetch", "Update", "Delete"}[at]
+}
+
+// ID.IsValid returns true if the represented ID is valid regeix, or false and the error otherwise.
 func (i ID) IsValid() (bool, error) {
 	if _, err := regexp.Compile(string(i)); err != nil {
 		return false, err
@@ -22,6 +45,7 @@ func (i ID) IsValid() (bool, error) {
 	return true, nil
 }
 
+// ID.Find determines if an ID value matching the regex for this ID can be found in string s.
 func (i ID) Find(s string) (string, bool) {
 	var rxp *regexp.Regexp
 	var err error
@@ -45,25 +69,21 @@ type APIResource interface {
 	SetCreate(f ResweaveFunc)
 	SetID(id ID) error
 	SetFetch(f ResweaveFunc)
+	SetDelete(f ResweaveFunc)
 }
 
 // BaseAPIRes supplies the basic building blocks for an APIResource.
 // It may be used through composition
 type BaseAPIRes struct {
 	logHolder
-	name       ResourceName
-	listFunc   ResweaveFunc
-	createFunc ResweaveFunc
-	fetchFunc  ResweaveFunc
-	id         ID
+	name      ResourceName
+	actionMap actionFuncMap
+	id        ID
 }
 
 // NewAPI creates a new APIResource instance with the provided name.
 func NewAPI(name ResourceName) APIResource {
-	bar := &BaseAPIRes{name: name, logHolder: newLogholder(name.String(), nil)}
-	bar.listFunc = bar.defaultFunction
-	bar.createFunc = bar.defaultFunction
-	bar.fetchFunc = bar.defaultFunction
+	bar := &BaseAPIRes{name: name, logHolder: newLogholder(name.String(), nil), actionMap: make(actionFuncMap)}
 	return bar
 }
 
@@ -83,21 +103,36 @@ func (bar *BaseAPIRes) SetID(id ID) error {
 	return nil
 }
 
+func (bar *BaseAPIRes) setFunction(at actionType, f ResweaveFunc) {
+	if f == nil {
+		delete(bar.actionMap, at)
+		return
+	}
+	bar.actionMap[at] = f
+}
+
 func (bar *BaseAPIRes) SetFetch(f ResweaveFunc) {
-	bar.fetchFunc = f
+	bar.setFunction(Fetch, f)
+}
+
+func (bar *BaseAPIRes) SetDelete(f ResweaveFunc) {
+	bar.setFunction(Delete, f)
 }
 
 func (bar *BaseAPIRes) SetList(f ResweaveFunc) {
-	bar.listFunc = f
+	bar.setFunction(List, f)
 }
 
 func (bar *BaseAPIRes) SetCreate(f ResweaveFunc) {
-	bar.createFunc = f
+	bar.setFunction(Create, f)
 }
 
-func (bar *BaseAPIRes) handleGet(c context.Context, w http.ResponseWriter, req *http.Request) {
-	const curMethod = "handleGet"
-	const methodKey = "method"
+func (bar *BaseAPIRes) unknownResource(_ context.Context, w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusNotFound)
+}
+
+func (bar *BaseAPIRes) storeID(c context.Context, req *http.Request) context.Context {
+	const curMethod = "storeID"
 	uriSegments := strings.Split(req.URL.Path, "/")
 	bar.Infow(curMethod, "Request URI", req.RequestURI, "Segment Count", len(uriSegments))
 
@@ -118,32 +153,47 @@ func (bar *BaseAPIRes) handleGet(c context.Context, w http.ResponseWriter, req *
 	bar.Infow(curMethod, "Segments", uriSegments, "idVal", idVal, "len(idVal)", len(idVal))
 
 	if len(idVal) == 0 {
-		bar.Infow(curMethod, methodKey, "LIST")
-		bar.listFunc(ctx, w, req)
-		return
+		return context.WithValue(ctx, Key(fmt.Sprintf(keyPathHasSubSegment, bar.name.String())), false)
 	}
+	ctx = context.WithValue(ctx, Key(fmt.Sprintf(keyPathHasSubSegment, bar.name.String())), true)
 	v, found := bar.id.Find(idVal)
 	bar.Infow(curMethod, "idVal", idVal, "found", found, "v", v)
 	if found {
-		ctx := context.WithValue(ctx, Key(fmt.Sprintf("id_%s", bar.name.String())), v)
-		bar.Infow(curMethod, methodKey, "FETCH")
-		bar.fetchFunc(ctx, w, req)
-		return
-	} else {
-		// TODO:  Will need to check here for nested API resource when added to code.
-		bar.Infow(curMethod, methodKey, "NONE")
-		w.WriteHeader(http.StatusNotFound)
-		return
+		ctx = context.WithValue(ctx, Key(fmt.Sprintf("id_%s", bar.name.String())), v)
 	}
+	return ctx
 }
 
-func (bar *BaseAPIRes) HandleCall(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+func (bar *BaseAPIRes) whichGet(ctx context.Context) (ResweaveFunc, bool) {
+	if id := ctx.Value(Key(fmt.Sprintf("id_%s", bar.name.String()))); id != nil {
+		f, found := bar.actionMap[Fetch]
+		return f, found
+	}
+	if hadChild := ctx.Value(Key(fmt.Sprintf(keyPathHasSubSegment, bar.name.String()))).(bool); hadChild {
+		return bar.unknownResource, true
+	}
+	f, found := bar.actionMap[List]
+	return f, found
+}
+
+func (bar *BaseAPIRes) HandleCall(c context.Context, w http.ResponseWriter, req *http.Request) {
+	ctx := bar.storeID(c, req)
+	var fun ResweaveFunc = bar.defaultFunction
 	switch req.Method {
 	case http.MethodGet:
-		bar.handleGet(ctx, w, req)
+		if f, found := bar.whichGet(ctx); found {
+			fun = f
+		}
 	case http.MethodPost:
-		bar.createFunc(ctx, w, req)
+		if f, found := bar.actionMap[Create]; found {
+			fun = f
+		}
+	case http.MethodDelete:
+		if f, found := bar.actionMap[Delete]; found {
+			fun = f
+		}
 	default:
-		bar.defaultFunction(ctx, w, req)
+		fun = bar.defaultFunction
 	}
+	fun(ctx, w, req)
 }

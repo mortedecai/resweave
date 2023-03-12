@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/mortedecai/go-go-gadgets/env"
@@ -34,13 +35,15 @@ type Todo struct {
 // TodoResource is an APIResource for handling TODOs
 type TodoResource struct {
 	resweave.APIResource
-	todos []Todo
+	todos  []Todo
+	nextID int
+	mtx    sync.Mutex
 }
 
 func createTodoResource(name resweave.ResourceName) (*TodoResource, error) {
 	res := &TodoResource{
-		resweave.NewAPI(name),
-		make([]Todo, 0),
+		APIResource: resweave.NewAPI(name),
+		todos:       make([]Todo, 0),
 	}
 	res.SetCreate(res.createTodo)
 	res.SetList(res.listTodos)
@@ -48,18 +51,18 @@ func createTodoResource(name resweave.ResourceName) (*TodoResource, error) {
 		return nil, err
 	}
 	res.SetFetch(res.fetchTodo)
+	res.SetDelete(res.deleteTodo)
 
 	return res, nil
 }
 
-func (tr *TodoResource) fetchTodo(ctx context.Context, w http.ResponseWriter, req *http.Request) {
-	const curMethod = "fetchTodos"
+func (tr *TodoResource) deleteTodo(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+	const curMethod = "deleteTodos"
 	var id int
 	var err error
-	var bytes []byte = make([]byte, 0)
-	if req.Method != http.MethodGet {
-		tr.Infow(curMethod, "Bad Method", req.Method, "Accepted Method(s)", http.MethodGet)
-		w.WriteHeader(http.StatusInternalServerError)
+	if req.Method != http.MethodDelete {
+		tr.Infow(curMethod, "Bad Method", req.Method, "Accepted Method(s)", http.MethodDelete)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	v := ctx.Value(resweave.Key(fmt.Sprintf("id_%s", tr.Name().String())))
@@ -74,6 +77,45 @@ func (tr *TodoResource) fetchTodo(ctx context.Context, w http.ResponseWriter, re
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	tr.mtx.Lock()
+	defer tr.mtx.Unlock()
+	for i, v := range tr.todos {
+		tr.Infow(curMethod, "Deleting", id, "current", (*v.ID))
+		if (*v.ID) == id {
+			// Ordering in the array doesn't matter; lookup by ID value
+			tr.todos[i] = tr.todos[len(tr.todos)-1]
+			tr.todos = tr.todos[:len(tr.todos)-1]
+			break
+		}
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (tr *TodoResource) fetchTodo(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+	const curMethod = "fetchTodos"
+	var id int
+	var err error
+	var bytes []byte = make([]byte, 0)
+	found := false
+	if req.Method != http.MethodGet {
+		tr.Infow(curMethod, "Bad Method", req.Method, "Accepted Method(s)", http.MethodGet)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	v := ctx.Value(resweave.Key(fmt.Sprintf("id_%s", tr.Name().String())))
+	var val string
+	var ok bool
+	if val, ok = v.(string); !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if id, err = strconv.Atoi(val); err != nil {
+		tr.Infow(curMethod, "Bad ID", val, "Error", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	tr.mtx.Lock()
+	defer tr.mtx.Unlock()
 	for _, v := range tr.todos {
 		tr.Infow(curMethod, "Fetching", id, "current", (*v.ID))
 		if (*v.ID) == id {
@@ -82,8 +124,13 @@ func (tr *TodoResource) fetchTodo(ctx context.Context, w http.ResponseWriter, re
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
+			found = true
 			break
 		}
+	}
+	if !found {
+		w.WriteHeader(http.StatusNotFound)
+		return
 	}
 	w.WriteHeader(http.StatusOK)
 	if bw, err := w.Write(bytes); err != nil {
@@ -101,6 +148,8 @@ func (tr *TodoResource) listTodos(_ context.Context, w http.ResponseWriter, req 
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	tr.mtx.Lock()
+	defer tr.mtx.Unlock()
 	if dataBytes, err = json.Marshal(tr.todos); err != nil {
 		tr.Infow(curMethod, "Unable To Marchal", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -124,31 +173,34 @@ func (tr *TodoResource) createTodo(_ context.Context, w http.ResponseWriter, req
 	}
 	tr.Infow(curMethod, "Supported Method", req.Method)
 	var todo Todo
-	if dataBytes, err := io.ReadAll(req.Body); err != nil {
+	dataBytes, err := io.ReadAll(req.Body)
+	if err != nil {
 		tr.Infow(curMethod, "Data Read Error", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
-	} else {
-		if err := json.Unmarshal(dataBytes, &todo); err != nil {
-			tr.Infow(curMethod, "Unmarshall Error", err, "Incoming Data", string(dataBytes))
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
 	}
+	if err := json.Unmarshal(dataBytes, &todo); err != nil {
+		tr.Infow(curMethod, "Unmarshall Error", err, "Incoming Data", string(dataBytes))
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	tr.mtx.Lock()
+	defer tr.mtx.Unlock()
 	if todo.ID == nil {
-		id := (len(tr.todos) + 1)
+		id := tr.nextID
+		tr.nextID++
 		todo.ID = &id
 	}
-	if dataBytes, err := json.Marshal(todo); err != nil {
+	dataBytes, err = json.Marshal(todo)
+	if err != nil {
 		tr.Infow(curMethod, "Marshall Return Error", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
-	} else {
-		tr.todos = append(tr.todos, todo)
-		w.WriteHeader(http.StatusCreated)
-		if bw, err := w.Write(dataBytes); err != nil {
-			tr.Infow(curMethod, "Response Write Error", err, "Bytes Written", bw)
-		}
+	}
+	tr.todos = append(tr.todos, todo)
+	w.WriteHeader(http.StatusCreated)
+	if bw, err := w.Write(dataBytes); err != nil {
+		tr.Infow(curMethod, "Response Write Error", err, "Bytes Written", bw)
 	}
 	tr.Infow(curMethod, logStatus, logCompleted)
 }

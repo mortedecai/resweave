@@ -168,17 +168,25 @@ var _ = Describe("Api", func() {
 			res.SetList(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			})
+			res.SetID(resweave.NumericID)
+			res.SetFetch(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusTeapot)
+			})
+			res.SetDelete(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusNoContent)
+			})
 			testData := []struct {
 				method    string
 				path      string
 				expStatus int
 			}{
 				{http.MethodGet, "/", http.StatusOK},
+				{http.MethodGet, "/21/", http.StatusTeapot},
 				{http.MethodPost, "/", http.StatusCreated},
 				/* TODO:  Uncomment as these methods are added */
 				// {http.MethodPut, "/"},
 				// {http.MethodPatch, "/"},
-				// {http.MethodDelete, "/"},
+				{http.MethodDelete, "/", http.StatusNoContent},
 				{"NOSUCHMETHOD", "/", http.StatusMethodNotAllowed},
 			}
 			for _, v := range testData {
@@ -187,6 +195,63 @@ var _ = Describe("Api", func() {
 				resultsMatch(v.expStatus, res, req)
 			}
 
+		})
+		It("should be possible to add all and then delete all viable functions to an API resource", func() {
+			res.SetCreate(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusCreated)
+			})
+			res.SetList(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			})
+			res.SetID(resweave.NumericID)
+			res.SetFetch(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusTeapot)
+			})
+			res.SetDelete(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusNoContent)
+			})
+			testData := []struct {
+				method    string
+				path      string
+				expStatus int
+			}{
+				{http.MethodGet, "/", http.StatusOK},
+				{http.MethodGet, "/21/", http.StatusTeapot},
+				{http.MethodPost, "/", http.StatusCreated},
+				/* TODO:  Uncomment as these methods are added */
+				// {http.MethodPut, "/"},
+				// {http.MethodPatch, "/"},
+				{http.MethodDelete, "/", http.StatusNoContent},
+				{"NOSUCHMETHOD", "/", http.StatusMethodNotAllowed},
+			}
+			for _, v := range testData {
+				req, err := http.NewRequest(v.method, v.path, nil)
+				Expect(err).ToNot(HaveOccurred())
+				resultsMatch(v.expStatus, res, req)
+			}
+			res.SetCreate(nil)
+			res.SetList(nil)
+			res.SetFetch(nil)
+			res.SetDelete(nil)
+			testData = []struct {
+				method    string
+				path      string
+				expStatus int
+			}{
+				{http.MethodGet, "/", http.StatusMethodNotAllowed},
+				{http.MethodGet, "/21/", http.StatusMethodNotAllowed},
+				{http.MethodPost, "/", http.StatusMethodNotAllowed},
+				/* TODO:  Uncomment as these methods are added */
+				// {http.MethodPut, "/"},
+				// {http.MethodPatch, "/"},
+				{http.MethodDelete, "/", http.StatusMethodNotAllowed},
+				{"NOSUCHMETHOD", "/", http.StatusMethodNotAllowed},
+			}
+			for _, v := range testData {
+				req, err := http.NewRequest(v.method, v.path, nil)
+				Expect(err).ToNot(HaveOccurred())
+				resultsMatch(v.expStatus, res, req)
+			}
 		})
 	})
 

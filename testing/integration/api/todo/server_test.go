@@ -42,7 +42,7 @@ var _ = Describe("Todos", Ordered, func() {
 	})
 	It("should be possible to create a todo", func() {
 		const desc = "Simple Todo"
-		var expID int = 1
+		var expID int = 0
 		var postBytes []byte
 		var err error
 		var recTodo pkg.Todo
@@ -68,7 +68,7 @@ var _ = Describe("Todos", Ordered, func() {
 	})
 	It("should be possible to retrieve a non-empty list of todos", func() {
 		const desc = "Simple Todo"
-		var expID int = 1
+		var expID int = 0
 		var err error
 		expTodo := pkg.Todo{ID: &expID, Description: desc}
 
@@ -88,7 +88,7 @@ var _ = Describe("Todos", Ordered, func() {
 	})
 	It("should be possible to retrieve a single todo from a list", func() {
 		const desc = "Simple Todo"
-		var expID int = 1
+		var expID int = 0
 		var err error
 		expTodo := pkg.Todo{ID: &expID, Description: desc}
 
@@ -119,5 +119,41 @@ var _ = Describe("Todos", Ordered, func() {
 		err = json.Unmarshal(fetchRespData, &fetchedTodo)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(fetchedTodo).To(Equal(todos[0]))
+	})
+	It("should be possible to delete a single todo from a list", func() {
+		const desc = "Simple Todo"
+		var expID int = 0
+		var err error
+		expTodo := pkg.Todo{ID: &expID, Description: desc}
+
+		uri := fmt.Sprintf("http://%s:8080/todos", host)
+		response, err := http.Get(uri)
+		Expect(err).ToNot(HaveOccurred())
+		defer response.Body.Close()
+
+		Expect(response.StatusCode).To(Equal(http.StatusOK))
+		respData, err := io.ReadAll(response.Body)
+		Expect(err).ToNot(HaveOccurred())
+
+		err = json.Unmarshal(respData, &todos)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(len(todos)).To(Equal(1))
+		Expect(todos[0]).To(Equal(expTodo))
+
+		deleteUri := fmt.Sprintf("http://%s:8080/todos/%d", host, (*todos[0].ID))
+		req, err := http.NewRequest(http.MethodDelete, deleteUri, nil)
+		Expect(err).ToNot(HaveOccurred())
+		deleteResponse, deleteErr := http.DefaultClient.Do(req)
+		Expect(deleteErr).ToNot(HaveOccurred())
+		defer deleteResponse.Body.Close()
+
+		Expect(deleteResponse.StatusCode).To(Equal(http.StatusNoContent))
+
+		fetchUri := fmt.Sprintf("http://%s:8080/todos/%d", host, (*todos[0].ID))
+		fetchResponse, fetchErr := http.Get(fetchUri)
+		Expect(fetchErr).ToNot(HaveOccurred())
+		defer fetchResponse.Body.Close()
+
+		Expect(fetchResponse.StatusCode).To(Equal(http.StatusNotFound))
 	})
 })
