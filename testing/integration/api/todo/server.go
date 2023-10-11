@@ -29,7 +29,7 @@ type Todo struct {
 	ID          *int       `json:"id,omitempty"`
 	Due         *time.Time `json:"due,omitempty"`
 	Completed   bool       `json:"completed,omitempty"`
-	Description string     `json:"description"`
+	Description string     `json:"description,omitempty"`
 }
 
 // TodoResource is an APIResource for handling TODOs
@@ -52,12 +52,153 @@ func createTodoResource(name resweave.ResourceName) (*TodoResource, error) {
 	}
 	res.SetFetch(res.fetchTodo)
 	res.SetDelete(res.deleteTodo)
+	res.SetUpdate(res.updateTodo)
 
 	return res, nil
 }
 
+func (tr *TodoResource) handlePut(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+	const curMethod = "handlePut"
+	var id int
+	var err error
+	if req.Method != http.MethodPut && req.Method != http.MethodPatch {
+		tr.Infow(curMethod, "Bad Method", req.Method, "Accepted Method(s)", http.MethodPut)
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	v := ctx.Value(resweave.Key(fmt.Sprintf("id_%s", tr.Name().String())))
+	var val string
+	var ok bool
+	if val, ok = v.(string); !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if id, err = strconv.Atoi(val); err != nil {
+		tr.Infow(curMethod, "Bad ID", val, "Error", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	var updateData Todo
+	dataBytes, err := io.ReadAll(req.Body)
+	if err != nil {
+		tr.Infow(curMethod, "Data Read Error", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if err := json.Unmarshal(dataBytes, &updateData); err != nil {
+		tr.Infow(curMethod, "Unmarshall Error", err, "Incoming Data", string(dataBytes))
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	tr.mtx.Lock()
+	defer tr.mtx.Unlock()
+
+	var respBytes []byte
+	for i, v := range tr.todos {
+		if (*v.ID) == id {
+			tr.Infow(curMethod, "Updating", id, "current", v, "update", updateData)
+			// Ordering in the array doesn't matter; lookup by ID value
+			tr.todos[i].Due = updateData.Due
+			tr.todos[i].Completed = updateData.Completed
+			tr.todos[i].Description = updateData.Description
+			tr.Infow(curMethod, "Updated", id, "current", tr.todos[i], "update", updateData)
+			respBytes, err = json.Marshal(tr.todos[i])
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			break
+		}
+	}
+	w.WriteHeader(http.StatusOK)
+	bw, err := w.Write(respBytes)
+	if err != nil {
+		tr.Infow(curMethod, "Updating", id, "Write Error", err, "Bytes Written", bw)
+	}
+}
+
+func (tr *TodoResource) handlePatch(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+	const curMethod = "handlePatch"
+	var id int
+	var err error
+	if req.Method != http.MethodPut && req.Method != http.MethodPatch {
+		tr.Infow(curMethod, "Bad Method", req.Method, "Accepted Method(s)", http.MethodPut)
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	v := ctx.Value(resweave.Key(fmt.Sprintf("id_%s", tr.Name().String())))
+	var val string
+	var ok bool
+	if val, ok = v.(string); !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if id, err = strconv.Atoi(val); err != nil {
+		tr.Infow(curMethod, "Bad ID", val, "Error", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	var updateData Todo
+	dataBytes, err := io.ReadAll(req.Body)
+	if err != nil {
+		tr.Infow(curMethod, "Data Read Error", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if err := json.Unmarshal(dataBytes, &updateData); err != nil {
+		tr.Infow(curMethod, "Unmarshall Error", err, "Incoming Data", string(dataBytes))
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	tr.mtx.Lock()
+	defer tr.mtx.Unlock()
+
+	var respBytes []byte
+	for i, v := range tr.todos {
+		if (*v.ID) == id {
+			tr.Infow(curMethod, "Updating", id, "current", v, "update", updateData)
+			// Ordering in the array doesn't matter; lookup by ID value
+			var emptyTime time.Time
+			if updateData.Due != nil && !updateData.Due.Equal(emptyTime) {
+				tr.todos[i].Due = updateData.Due
+			}
+			tr.todos[i].Completed = updateData.Completed
+			if len(updateData.Description) > 0 {
+				tr.todos[i].Description = updateData.Description
+			}
+			tr.Infow(curMethod, "Updated", id, "current", tr.todos[i], "update", updateData)
+			respBytes, err = json.Marshal(tr.todos[i])
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			break
+		}
+	}
+	w.WriteHeader(http.StatusOK)
+	bw, err := w.Write(respBytes)
+	if err != nil {
+		tr.Infow(curMethod, "Updating", id, "Write Error", err, "Bytes Written", bw)
+	}
+}
+
+func (tr *TodoResource) updateTodo(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+	switch req.Method {
+	case http.MethodPut:
+		tr.handlePut(ctx, w, req)
+	case http.MethodPatch:
+		tr.handlePatch(ctx, w, req)
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
 func (tr *TodoResource) deleteTodo(ctx context.Context, w http.ResponseWriter, req *http.Request) {
-	const curMethod = "deleteTodos"
+	const curMethod = "deleteTodo"
 	var id int
 	var err error
 	if req.Method != http.MethodDelete {

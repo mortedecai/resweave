@@ -22,10 +22,7 @@ type TestData interface {
 }
 
 func createTestData(exp string) TestData {
-	host, found := env.GetWithDefault("HOST_NAME", "localhost")
-	if found {
-		fmt.Println("Found hostname in environment")
-	}
+	host, _ := env.GetWithDefault("HOST_NAME", "localhost")
 	return resweaveAPITestData{data: exp, host: host}
 }
 

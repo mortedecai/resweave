@@ -67,9 +67,10 @@ type APIResource interface {
 	logHolder
 	SetList(f ResweaveFunc)
 	SetCreate(f ResweaveFunc)
-	SetID(id ID) error
 	SetFetch(f ResweaveFunc)
 	SetDelete(f ResweaveFunc)
+	SetUpdate(f ResweaveFunc)
+	SetID(id ID) error
 }
 
 // BaseAPIRes supplies the basic building blocks for an APIResource.
@@ -125,6 +126,10 @@ func (bar *BaseAPIRes) SetList(f ResweaveFunc) {
 
 func (bar *BaseAPIRes) SetCreate(f ResweaveFunc) {
 	bar.setFunction(Create, f)
+}
+
+func (bar *BaseAPIRes) SetUpdate(f ResweaveFunc) {
+	bar.setFunction(Update, f)
 }
 
 func (bar *BaseAPIRes) unknownResource(_ context.Context, w http.ResponseWriter, _ *http.Request) {
@@ -190,6 +195,10 @@ func (bar *BaseAPIRes) HandleCall(c context.Context, w http.ResponseWriter, req 
 		}
 	case http.MethodDelete:
 		if f, found := bar.actionMap[Delete]; found {
+			fun = f
+		}
+	case http.MethodPut, http.MethodPatch:
+		if f, found := bar.actionMap[Update]; found {
 			fun = f
 		}
 	default:

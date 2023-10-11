@@ -19,8 +19,9 @@ type HTMLResource interface {
 
 type htmlResource struct {
 	logHolder
-	name ResourceName
-	base string
+	name    ResourceName
+	base    string
+	handler http.Handler
 }
 
 // NewHTML creats a new HTMLResource for use with a resweave Server
@@ -34,9 +35,6 @@ func (h *htmlResource) Name() ResourceName {
 }
 
 func (h *htmlResource) HandleCall(_ context.Context, w http.ResponseWriter, req *http.Request) {
-	h.Infow("Fetch", "RequestURI", req.RequestURI, "Full Path", h.FullPath())
-	h.Infow("Fetch", "URL", req.URL.String(), "Full Path", h.FullPath())
-	h.Infow("Fetch", "Path", req.URL.Path, "Full Path", h.FullPath())
 	f, err := os.Stat(h.base)
 	if err != nil {
 		h.Infow("Fetch", "Stat Base", h.base, "Error?", err.Error())
@@ -44,8 +42,10 @@ func (h *htmlResource) HandleCall(_ context.Context, w http.ResponseWriter, req 
 		return
 	}
 	h.Infow("Fetch", "Is directory?", f.IsDir())
-	hndlr := http.StripPrefix(h.FullPath().String(), http.FileServer(http.Dir(h.base)))
-	hndlr.ServeHTTP(w, req)
+	if h.handler == nil {
+		h.handler = http.StripPrefix(h.FullPath().String(), http.FileServer(http.Dir(h.base)))
+	}
+	h.handler.ServeHTTP(w, req)
 }
 
 func (h *htmlResource) BaseDir() string {

@@ -197,7 +197,11 @@ var _ = Describe("Api", func() {
 
 		})
 		It("should be possible to add all and then delete all viable functions to an API resource", func() {
-			res.SetCreate(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
+			res.SetCreate(func(_ context.Context, w http.ResponseWriter, req *http.Request) {
+				if req.Method != http.MethodPost {
+					w.WriteHeader(http.StatusMethodNotAllowed)
+					return
+				}
 				w.WriteHeader(http.StatusCreated)
 			})
 			res.SetList(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
@@ -210,6 +214,14 @@ var _ = Describe("Api", func() {
 			res.SetDelete(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusNoContent)
 			})
+			res.SetUpdate(func(_ context.Context, w http.ResponseWriter, req *http.Request) {
+				if req.Method != http.MethodPatch && req.Method != http.MethodPut {
+					w.WriteHeader(http.StatusMethodNotAllowed)
+					return
+				}
+				w.WriteHeader(http.StatusAccepted)
+			})
+
 			testData := []struct {
 				method    string
 				path      string
@@ -218,9 +230,8 @@ var _ = Describe("Api", func() {
 				{http.MethodGet, "/", http.StatusOK},
 				{http.MethodGet, "/21/", http.StatusTeapot},
 				{http.MethodPost, "/", http.StatusCreated},
-				/* TODO:  Uncomment as these methods are added */
-				// {http.MethodPut, "/"},
-				// {http.MethodPatch, "/"},
+				{http.MethodPut, "/21/", http.StatusAccepted},
+				{http.MethodPatch, "/21/", http.StatusAccepted},
 				{http.MethodDelete, "/", http.StatusNoContent},
 				{"NOSUCHMETHOD", "/", http.StatusMethodNotAllowed},
 			}
@@ -232,6 +243,7 @@ var _ = Describe("Api", func() {
 			res.SetCreate(nil)
 			res.SetList(nil)
 			res.SetFetch(nil)
+			res.SetUpdate(nil)
 			res.SetDelete(nil)
 			testData = []struct {
 				method    string
@@ -241,9 +253,8 @@ var _ = Describe("Api", func() {
 				{http.MethodGet, "/", http.StatusMethodNotAllowed},
 				{http.MethodGet, "/21/", http.StatusMethodNotAllowed},
 				{http.MethodPost, "/", http.StatusMethodNotAllowed},
-				/* TODO:  Uncomment as these methods are added */
-				// {http.MethodPut, "/"},
-				// {http.MethodPatch, "/"},
+				{http.MethodPut, "/21/", http.StatusMethodNotAllowed},
+				{http.MethodPatch, "/21/", http.StatusMethodNotAllowed},
 				{http.MethodDelete, "/", http.StatusMethodNotAllowed},
 				{"NOSUCHMETHOD", "/", http.StatusMethodNotAllowed},
 			}

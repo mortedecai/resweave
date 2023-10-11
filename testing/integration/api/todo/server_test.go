@@ -16,14 +16,10 @@ import (
 var _ = Describe("Todos", Ordered, func() {
 	var (
 		host  string
-		found bool
 		todos []pkg.Todo
 	)
 	BeforeEach(func() {
-		host, found = env.GetWithDefault("HOST_NAME", "localhost")
-		if found {
-			fmt.Println("Found hostname in environment")
-		}
+		host, _ = env.GetWithDefault("HOST_NAME", "localhost")
 		todos = make([]pkg.Todo, 0)
 	})
 	It("should be possible to retrieve an empty list of todos", func() {
@@ -120,12 +116,117 @@ var _ = Describe("Todos", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(fetchedTodo).To(Equal(todos[0]))
 	})
-	It("should be possible to delete a single todo from a list", func() {
-		const desc = "Simple Todo"
+	It("should be possible to PUT a single todo from a list", func() {
+		const newDesc = "This used to be a Simple Todo"
 		var expID int = 0
 		var err error
-		expTodo := pkg.Todo{ID: &expID, Description: desc}
+		var todo pkg.Todo
+		var putData []byte
 
+		uri := fmt.Sprintf("http://%s:8080/todos/", host)
+		response, err := http.Get(uri)
+		Expect(err).ToNot(HaveOccurred())
+		defer response.Body.Close()
+
+		Expect(response.StatusCode).To(Equal(http.StatusOK))
+		respData, err := io.ReadAll(response.Body)
+		Expect(err).ToNot(HaveOccurred())
+
+		err = json.Unmarshal(respData, &todos)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(len(todos)).To(Equal(1))
+
+		todo = todos[0]
+		todo.Description = newDesc
+
+		putData, err = json.Marshal(todo)
+		Expect(err).ToNot(HaveOccurred())
+		buff := bytes.NewBuffer(putData)
+
+		putUri := fmt.Sprintf("http://%s:8080/todos/%d", host, (*todo.ID))
+		req, err := http.NewRequest(http.MethodPut, putUri, buff)
+		Expect(err).ToNot(HaveOccurred())
+		putResponse, putErr := http.DefaultClient.Do(req)
+		Expect(putErr).ToNot(HaveOccurred())
+		defer putResponse.Body.Close()
+
+		Expect(putResponse.StatusCode).To(Equal(http.StatusOK))
+		putData, err = io.ReadAll(putResponse.Body)
+		Expect(err).ToNot(HaveOccurred())
+		var putedTodo pkg.Todo
+		err = json.Unmarshal(putData, &putedTodo)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(putedTodo.Description).To(Equal(newDesc))
+		Expect(*putedTodo.ID).To(Equal(expID))
+
+		fetchUri := fmt.Sprintf("http://%s:8080/todos/%d", host, (*todos[0].ID))
+		fetchResponse, fetchErr := http.Get(fetchUri)
+		Expect(fetchErr).ToNot(HaveOccurred())
+		defer fetchResponse.Body.Close()
+
+		Expect(fetchResponse.StatusCode).To(Equal(http.StatusOK))
+		fetchRespData, err := io.ReadAll(fetchResponse.Body)
+		Expect(err).ToNot(HaveOccurred())
+		var fetchedTodo pkg.Todo
+		err = json.Unmarshal(fetchRespData, &fetchedTodo)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(fetchedTodo).To(Equal(putedTodo))
+	})
+
+	It("should be possible to PATCH a single todo from a list", func() {
+		const expDesc = "This used to be a Simple Todo"
+		var expID int = 0
+		var err error
+		var todo pkg.Todo = pkg.Todo{ID: new(int)}
+		var patchData []byte
+
+		*todo.ID = 0
+		todo.Completed = true
+
+		patchData, err = json.Marshal(todo)
+		Expect(err).ToNot(HaveOccurred())
+		buff := bytes.NewBuffer(patchData)
+
+		patchUri := fmt.Sprintf("http://%s:8080/todos/%d", host, (*todo.ID))
+		req, err := http.NewRequest(http.MethodPatch, patchUri, buff)
+		Expect(err).ToNot(HaveOccurred())
+		patchResponse, patchErr := http.DefaultClient.Do(req)
+		Expect(patchErr).ToNot(HaveOccurred())
+		defer patchResponse.Body.Close()
+
+		Expect(patchResponse.StatusCode).To(Equal(http.StatusOK))
+		patchData, err = io.ReadAll(patchResponse.Body)
+		Expect(err).ToNot(HaveOccurred())
+		var patchedTodo pkg.Todo
+		err = json.Unmarshal(patchData, &patchedTodo)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(patchedTodo.Description).To(Equal(expDesc))
+		Expect(*patchedTodo.ID).To(Equal(expID))
+
+		fetchUri := fmt.Sprintf("http://%s:8080/todos/%d", host, *todo.ID)
+		fetchResponse, fetchErr := http.Get(fetchUri)
+		Expect(fetchErr).ToNot(HaveOccurred())
+		defer fetchResponse.Body.Close()
+
+		Expect(fetchResponse.StatusCode).To(Equal(http.StatusOK))
+		fetchRespData, err := io.ReadAll(fetchResponse.Body)
+		Expect(err).ToNot(HaveOccurred())
+		var fetchedTodo pkg.Todo
+		err = json.Unmarshal(fetchRespData, &fetchedTodo)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(fetchedTodo).To(Equal(patchedTodo))
+		Expect(fetchedTodo).ToNot(Equal(todo))
+		Expect(*fetchedTodo.ID).To(Equal(*todo.ID))
+		Expect(fetchedTodo.Completed).To(Equal(todo.Completed))
+		Expect(fetchedTodo.Description).To(Equal(expDesc))
+
+	})
+
+	It("should be possible to delete a single todo from a list", func() {
+		const desc = "This used to be a Simple Todo"
+		var expID int = 0
+		var err error
+		expTodo := pkg.Todo{ID: &expID, Description: desc, Completed: true}
 		uri := fmt.Sprintf("http://%s:8080/todos", host)
 		response, err := http.Get(uri)
 		Expect(err).ToNot(HaveOccurred())
