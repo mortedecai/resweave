@@ -3,8 +3,8 @@ module mortedecai/resweave/helloapitest
 go 1.19
 
 require (
-	github.com/agilitree/resweave v0.0.6
 	github.com/mortedecai/go-go-gadgets v0.2.1
+	github.com/mortedecai/resweave v0.0.6
 	github.com/onsi/ginkgo/v2 v2.6.1
 	github.com/onsi/gomega v1.24.2
 	go.uber.org/zap v1.24.0
