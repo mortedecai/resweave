@@ -306,6 +306,50 @@ var _ = Describe("Api", func() {
 			}
 		})
 	})
+
+	var _ = Describe("GetIDValue", func() {
+		entries := []struct {
+			description string
+			outcome     string
+			ctx         context.Context
+			expIDStr    string
+			errMatcher  func(error)
+		}{
+			{
+				description: "empty context",
+				outcome:     "should error due to no ID",
+				ctx:         context.Background(),
+				expIDStr:    "",
+				errMatcher:  func(err error) { Expect(err).To(MatchError(resweave.ErrIDNotFound)) },
+			},
+			{
+				description: "no ID",
+				outcome:     "should error due to no ID",
+				ctx:         context.WithValue(context.Background(), resweave.Key("foo"), "bar"),
+				expIDStr:    "",
+				errMatcher:  func(err error) { Expect(err).To(MatchError(resweave.ErrIDNotFound)) },
+			},
+			{
+				description: "ID exists",
+				outcome:     "should return the ID value no error",
+				ctx:         context.WithValue(context.Background(), resweave.Key("id_foo"), "1234"),
+				expIDStr:    "1234",
+				errMatcher:  func(err error) { Expect(err).ToNot(HaveOccurred()) },
+			},
+		}
+
+		for _, e := range entries {
+			entry := e
+			Context(entry.description, func() {
+				It(entry.outcome, func() {
+					res := resweave.NewAPI("foo")
+					idStr, err := res.GetIDValue(entry.ctx)
+					Expect(idStr).To(Equal(entry.expIDStr))
+					entry.errMatcher(err)
+				})
+			})
+		}
+	})
 })
 
 func resultsMatch(expStatusCode int, res resweave.Resource, req *http.Request) ([]byte, error) {

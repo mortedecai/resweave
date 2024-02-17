@@ -2,6 +2,7 @@ package resweave
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -31,6 +32,10 @@ const (
 	Fetch
 	Update
 	Delete
+)
+
+var (
+	ErrIDNotFound = errors.New("no ID found")
 )
 
 func (at actionType) String() string {
@@ -71,6 +76,7 @@ type APIResource interface {
 	SetDelete(f ResweaveFunc)
 	SetUpdate(f ResweaveFunc)
 	SetID(id ID) error
+	GetIDValue(ctx context.Context) (string, error)
 }
 
 // BaseAPIRes supplies the basic building blocks for an APIResource.
@@ -94,6 +100,18 @@ func (bar *BaseAPIRes) Name() ResourceName {
 
 func (bar *BaseAPIRes) defaultFunction(_ context.Context, w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusMethodNotAllowed)
+}
+
+func (bar *BaseAPIRes) GetIDValue(ctx context.Context) (string, error) {
+	key := Key(fmt.Sprintf("id_%s", bar.Name().String()))
+	v := ctx.Value(key)
+	var idStr string
+	var ok bool
+	if idStr, ok = v.(string); !ok {
+		return "", ErrIDNotFound
+	}
+
+	return idStr, nil
 }
 
 func (bar *BaseAPIRes) SetID(id ID) error {

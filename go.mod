@@ -1,6 +1,6 @@
 module github.com/mortedecai/resweave
 
-go 1.19
+go 1.22
 
 require (
 	github.com/onsi/ginkgo/v2 v2.6.1
