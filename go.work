@@ -9,4 +9,4 @@ use (
 	./testing/integration/html/multiroothello
 )
 
-replace github.com/mortedecai/resweave v0.0.6 => ./
+replace github.com/mortedecai/resweave v0.0.0-test => ./
