@@ -12,6 +12,7 @@ type logHolder interface {
 	LoggerName() string
 
 	Infow(msg string, args ...interface{})
+	Errorw(msg string, args ...interface{})
 	Debugw(msg string, args ...interface{})
 }
 
@@ -49,9 +50,16 @@ func (l *logholder) SetLogger(logger *zap.SugaredLogger, recursive bool) {
 func (l *logholder) LoggerName() string {
 	return l.name
 }
+
 func (l *logholder) Infow(msg string, args ...interface{}) {
 	if l.Logger() != nil {
 		l.Logger().Infow(msg, args...)
+	}
+}
+
+func (l *logholder) Errorw(msg string, args ...interface{}) {
+	if l.Logger() != nil {
+		l.Logger().Errorw(msg, args...)
 	}
 }
 

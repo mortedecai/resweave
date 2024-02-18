@@ -38,6 +38,8 @@ type Server interface {
 	// AddInterceptor adds a new interceptor at the start of the handling chain.
 	// For example, on an incoming request, _next_ will be called first, with any current interceptors being
 	AddInterceptor(func(next http.Handler) http.Handler)
+	// Serve the http response for an incoming request
+	Serve(w http.ResponseWriter, req *http.Request)
 }
 
 const (
@@ -56,7 +58,7 @@ func NewServer(port int) Server {
 	s := &server{port: port, hosts: make(HostMap)}
 	s.hosts[defaultHostName] = newHost(defaultHostName)
 	s.logHolder = newLogholder("<srv>", s.recurse)
-	s.interceptor = http.HandlerFunc(s.serve)
+	s.interceptor = http.HandlerFunc(s.Serve)
 	return s
 }
 
@@ -93,7 +95,7 @@ func (s *server) getDefaultHost() Host {
 	return s.hosts[defaultHostName]
 }
 
-func (s *server) serve(w http.ResponseWriter, req *http.Request) {
+func (s *server) Serve(w http.ResponseWriter, req *http.Request) {
 	s.Infow("serve", "Request URI", req.URL, "Host", req.Host, "Header", req.Header)
 	var host Host = s.getDefaultHost()
 	hostname := HostName(req.Host)
