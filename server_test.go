@@ -100,7 +100,13 @@ var _ = Describe("Server", func() {
 			})
 			recorder = httptest.NewRecorder()
 			req = httptest.NewRequest(http.MethodGet, "/", nil)
-			s.(*server).interceptor.ServeHTTP(recorder, req)
+			l, err := zap.NewProduction()
+			Expect(err).ToNot(HaveOccurred())
+			s.SetLogger(l.Sugar(), true)
+			// Necessary whitebox test:  s.(*server).setRequetIDInterceptor(s.interceptor) is called when executing Run()
+			// To simulate the full request chain, it is necessary to call the following, rather than just interceptor.ServeHTTP
+			srvr := s.(*server)
+			srvr.setRequestIDInterceptor(srvr.interceptor).ServeHTTP(recorder, req)
 			Expect(ic1).To(Equal(2))
 			Expect(ic2).To(Equal(1))
 

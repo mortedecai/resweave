@@ -1,7 +1,9 @@
 package resweave
 
 import (
+	"context"
 	"fmt"
+	"github.com/google/uuid"
 	"net/http"
 	"time"
 
@@ -110,7 +112,7 @@ func (s *server) Serve(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *server) Run() error {
-	http.Handle("/", s.interceptor)
+	http.Handle("/", s.setRequestIDInterceptor(s.interceptor))
 	return s.createHTTPServer().ListenAndServe()
 }
 
@@ -138,4 +140,20 @@ func (s *server) GetHost(name HostName) (h Host, f bool) {
 
 func (s *server) AddInterceptor(f func(next http.Handler) http.Handler) {
 	s.interceptor = f(s.interceptor)
+}
+
+func (s *server) setRequestIDInterceptor(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reqID := uuid.New()
+		req := r.WithContext(context.WithValue(r.Context(), KeyRequestID, reqID.String()))
+		// Since is the entry point to the system, provide the option to debug log the request ID from here.
+		if s.Logger() != nil {
+			s.Debugw("Incoming Request", "State", "Starting", "ID", reqID.String())
+		}
+		next.ServeHTTP(w, req)
+		// This is the end before leaving Resweave... acknowledge the request on the way out.
+		if s.Logger() != nil {
+			s.Debugw("Incoming Request", "State", "Completed", "ID", reqID.String())
+		}
+	})
 }

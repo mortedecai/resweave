@@ -32,6 +32,8 @@ const (
 	Fetch
 	Update
 	Delete
+
+	KeyRequestID = Key("INCOMING_REQUEST_ID")
 )
 
 var (

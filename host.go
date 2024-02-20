@@ -1,7 +1,6 @@
 package resweave
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -83,7 +82,7 @@ func (h *host) Serve(w http.ResponseWriter, req *http.Request) {
 	h.Infow("Serve", "Host Name", h.Name(), "Request URI", req.RequestURI)
 	pathSegs := strings.Split(req.URL.Path, "/")[1:]
 	reqPaths := ResourceNames(pathSegs)
-	ctx := context.TODO()
+	ctx := req.Context()
 
 	res, found := h.GetResource(reqPaths[0])
 	h.Infow("Serve", "Request Path:", reqPaths[0], "Found?", found)
