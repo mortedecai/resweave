@@ -71,7 +71,7 @@ func (i ID) Find(s string) (string, bool) {
 // APIResource is a basic APIResource which has a single point of entry for serving the supported access methods.
 type APIResource interface {
 	Resource
-	logHolder
+	LogHolder
 	SetList(f ResweaveFunc)
 	SetCreate(f ResweaveFunc)
 	SetFetch(f ResweaveFunc)
@@ -84,7 +84,7 @@ type APIResource interface {
 // BaseAPIRes supplies the basic building blocks for an APIResource.
 // It may be used through composition
 type BaseAPIRes struct {
-	logHolder
+	LogHolder
 	name      ResourceName
 	actionMap actionFuncMap
 	id        ID
@@ -92,7 +92,7 @@ type BaseAPIRes struct {
 
 // NewAPI creates a new APIResource instance with the provided name.
 func NewAPI(name ResourceName) APIResource {
-	bar := &BaseAPIRes{name: name, logHolder: newLogholder(name.String(), nil), actionMap: make(actionFuncMap)}
+	bar := &BaseAPIRes{name: name, LogHolder: NewLogholder(name.String(), nil), actionMap: make(actionFuncMap)}
 	return bar
 }
 

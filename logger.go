@@ -6,7 +6,7 @@ import (
 	"go.uber.org/zap"
 )
 
-type logHolder interface {
+type LogHolder interface {
 	Logger() *zap.SugaredLogger
 	SetLogger(logger *zap.SugaredLogger, recursive bool)
 	LoggerName() string
@@ -16,15 +16,15 @@ type logHolder interface {
 	Debugw(msg string, args ...interface{})
 }
 
-type recurserFunc func(l *zap.SugaredLogger)
+type RecurserFunc func(l *zap.SugaredLogger)
 
 type logholder struct {
 	logger   *zap.SugaredLogger
-	recurser recurserFunc
+	recurser RecurserFunc
 	name     string
 }
 
-func newLogholder(name string, r recurserFunc) logHolder {
+func NewLogholder(name string, r RecurserFunc) *logholder {
 	return &logholder{name: name, logger: nil, recurser: r}
 }
 

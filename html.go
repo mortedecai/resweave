@@ -18,7 +18,7 @@ type HTMLResource interface {
 }
 
 type htmlResource struct {
-	logHolder
+	LogHolder
 	name    ResourceName
 	base    string
 	handler http.Handler
@@ -27,7 +27,7 @@ type htmlResource struct {
 // NewHTML creats a new HTMLResource for use with a resweave Server
 func NewHTML(name ResourceName, baseDir string) HTMLResource {
 	// HTML resources never have sub resources; no recurser function necessary.
-	return &htmlResource{name: name, base: baseDir, logHolder: newLogholder(name.String(), nil)}
+	return &htmlResource{name: name, base: baseDir, LogHolder: NewLogholder(name.String(), nil)}
 }
 
 func (h *htmlResource) Name() ResourceName {

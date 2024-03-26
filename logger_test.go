@@ -8,12 +8,12 @@ import (
 
 var _ = Describe("Logger", func() {
 	var (
-		lhnr logHolder
-		lhr  logHolder
+		lhnr LogHolder
+		lhr  LogHolder
 	)
 	BeforeEach(func() {
-		lhnr = newLogholder("lhnr", nil)
-		lhr = newLogholder("lhr", recurse)
+		lhnr = NewLogholder("lhnr", nil)
+		lhr = NewLogholder("lhr", recurse)
 	})
 	It("should be possible to create a new non-recursing logHolder", func() {
 		Expect(lhnr).ToNot(BeNil())

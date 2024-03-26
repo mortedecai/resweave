@@ -24,7 +24,7 @@ type Host interface {
 	GetResource(name ResourceName) (res Resource, found bool)
 	// Serve handles serving the resources under the Host.
 	Serve(w http.ResponseWriter, req *http.Request)
-	logHolder
+	LogHolder
 }
 
 // HostName is a type for managing host names in the resweave system.
@@ -41,12 +41,12 @@ type HostMap map[HostName]Host
 type host struct {
 	name      HostName
 	resources ResourceMap
-	logHolder
+	LogHolder
 }
 
 func newHost(name HostName) Host {
 	h := &host{name: name, resources: make(ResourceMap)}
-	h.logHolder = newLogholder(string(name.StripPort()), h.recurse)
+	h.LogHolder = NewLogholder(string(name.StripPort()), h.recurse)
 	return h
 }
 

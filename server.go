@@ -3,9 +3,10 @@ package resweave
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
 	"net/http"
 	"time"
+
+	"github.com/google/uuid"
 
 	"go.uber.org/zap"
 )
@@ -59,7 +60,7 @@ const (
 func NewServer(port int) Server {
 	s := &server{port: port, hosts: make(HostMap)}
 	s.hosts[defaultHostName] = newHost(defaultHostName)
-	s.logHolder = newLogholder("<srv>", s.recurse)
+	s.LogHolder = NewLogholder("<srv>", s.recurse)
 	s.interceptor = http.HandlerFunc(s.Serve)
 	return s
 }
@@ -68,7 +69,7 @@ type server struct {
 	port        int
 	hosts       HostMap
 	interceptor http.Handler
-	logHolder
+	LogHolder
 }
 
 func (s *server) recurse(l *zap.SugaredLogger) {
