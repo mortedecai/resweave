@@ -30,15 +30,16 @@ const (
 	UUIDv7    ID = ID(`^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$`)
 
 	keyPathHasSubSegment = "pathHasSubSegment_%s"
+	KeyRequestID         = Key("INCOMING_REQUEST_ID")
+)
 
+const (
 	unknown ActionType = iota
 	Create
 	List
 	Fetch
 	Update
 	Delete
-
-	KeyRequestID = Key("INCOMING_REQUEST_ID")
 )
 
 var (
