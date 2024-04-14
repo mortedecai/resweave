@@ -16,18 +16,23 @@ type Key string
 type ID string
 
 // actionType is a type alias for resweave actions
-type actionType int
+type ActionType int
+
+// HandlerFunction is a type alias for the request handler
+type HandlerFunction func(ActionType, context.Context, http.ResponseWriter, *http.Request)
 
 // actionFuncMap is a type alias for a map of actionTypes to ResweaveFuncs
-type actionFuncMap map[actionType]ResweaveFunc
+type actionFuncMap map[ActionType]ResweaveFunc
 
 const (
 	// NumericID is a default representation for a numeric identifier.
 	NumericID ID = ID("([0-9]+)")
+	UUIDv7    ID = ID(`^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$`)
 
 	keyPathHasSubSegment = "pathHasSubSegment_%s"
 
-	Create actionType = iota
+	unknown ActionType = iota
+	Create
 	List
 	Fetch
 	Update
@@ -40,8 +45,8 @@ var (
 	ErrIDNotFound = errors.New("no ID found")
 )
 
-func (at actionType) String() string {
-	return [...]string{"Create", "List", "Fetch", "Update", "Delete"}[at]
+func (at ActionType) String() string {
+	return [...]string{"Unknown", "Create", "List", "Fetch", "Update", "Delete"}[at]
 }
 
 // ID.IsValid returns true if the represented ID is valid regeix, or false and the error otherwise.
@@ -78,6 +83,7 @@ type APIResource interface {
 	SetDelete(f ResweaveFunc)
 	SetUpdate(f ResweaveFunc)
 	SetID(id ID) error
+	SetHandler(handler HandlerFunction)
 	GetIDValue(ctx context.Context) (string, error)
 }
 
@@ -88,11 +94,13 @@ type BaseAPIRes struct {
 	name      ResourceName
 	actionMap actionFuncMap
 	id        ID
+	handler   HandlerFunction
 }
 
 // NewAPI creates a new APIResource instance with the provided name.
 func NewAPI(name ResourceName) APIResource {
 	bar := &BaseAPIRes{name: name, LogHolder: NewLogholder(name.String(), nil), actionMap: make(actionFuncMap)}
+	bar.SetHandler(nil)
 	return bar
 }
 
@@ -124,7 +132,7 @@ func (bar *BaseAPIRes) SetID(id ID) error {
 	return nil
 }
 
-func (bar *BaseAPIRes) setFunction(at actionType, f ResweaveFunc) {
+func (bar *BaseAPIRes) setFunction(at ActionType, f ResweaveFunc) {
 	if f == nil {
 		delete(bar.actionMap, at)
 		return
@@ -189,40 +197,51 @@ func (bar *BaseAPIRes) storeID(c context.Context, req *http.Request) context.Con
 	return ctx
 }
 
-func (bar *BaseAPIRes) whichGet(ctx context.Context) (ResweaveFunc, bool) {
-	if id := ctx.Value(Key(fmt.Sprintf("id_%s", bar.name.String()))); id != nil {
-		f, found := bar.actionMap[Fetch]
-		return f, found
+func (bar *BaseAPIRes) whichAction(ctx context.Context, httpMethod string) ActionType {
+	switch httpMethod {
+	case http.MethodGet:
+		if _, err := bar.GetIDValue(ctx); err == nil {
+			return Fetch
+		}
+		return List
+	case http.MethodPost:
+		return Create
+	case http.MethodDelete:
+		return Delete
+	case http.MethodPut, http.MethodPatch:
+		return Update
+	default:
+		return unknown
 	}
-	if hadChild := ctx.Value(Key(fmt.Sprintf(keyPathHasSubSegment, bar.name.String()))).(bool); hadChild {
-		return bar.unknownResource, true
+}
+
+func (bar *BaseAPIRes) SetHandler(handler HandlerFunction) {
+	if handler == nil {
+		bar.handler = bar.defaultHandler
+		return
 	}
-	f, found := bar.actionMap[List]
-	return f, found
+	bar.handler = handler
 }
 
 func (bar *BaseAPIRes) HandleCall(c context.Context, w http.ResponseWriter, req *http.Request) {
 	ctx := bar.storeID(c, req)
-	var fun ResweaveFunc = bar.defaultFunction
-	switch req.Method {
-	case http.MethodGet:
-		if f, found := bar.whichGet(ctx); found {
-			fun = f
-		}
-	case http.MethodPost:
-		if f, found := bar.actionMap[Create]; found {
-			fun = f
-		}
-	case http.MethodDelete:
-		if f, found := bar.actionMap[Delete]; found {
-			fun = f
-		}
-	case http.MethodPut, http.MethodPatch:
-		if f, found := bar.actionMap[Update]; found {
-			fun = f
-		}
-	default:
-		fun = bar.defaultFunction
+	at := bar.whichAction(ctx, req.Method)
+	if at == unknown {
+		bar.defaultFunction(ctx, w, req)
+		return
 	}
-	fun(ctx, w, req)
+	bar.handler(at, ctx, w, req)
+}
+
+func (bar *BaseAPIRes) defaultHandler(at ActionType, c context.Context, w http.ResponseWriter, req *http.Request) {
+	var fun ResweaveFunc = bar.defaultFunction
+	if f, found := bar.actionMap[at]; found {
+		fun = f
+	}
+	if at == List {
+		if hadChild := c.Value(Key(fmt.Sprintf(keyPathHasSubSegment, bar.name.String()))).(bool); hadChild {
+			fun = bar.unknownResource
+		}
+	}
+	fun(c, w, req)
 }

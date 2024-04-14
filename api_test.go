@@ -264,6 +264,21 @@ var _ = Describe("Api", func() {
 				resultsMatch(v.expStatus, res, req)
 			}
 		})
+		It("should allow a custom handler to be registered", func() {
+			// Arrange
+			handled := false
+			res.SetHandler(func(_ resweave.ActionType, _ context.Context, _ http.ResponseWriter, _ *http.Request) {
+				handled = true
+			})
+
+			// Act
+			req, err := http.NewRequest(http.MethodPost, "/test", nil)
+			Expect(err).ToNot(HaveOccurred())
+			res.HandleCall(context.TODO(), nil, req)
+
+			// Assert
+			Expect(handled).To(BeTrue())
+		})
 	})
 
 	var _ = Describe("Fetch & List Handling", func() {
