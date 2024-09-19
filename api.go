@@ -165,7 +165,7 @@ func (bar *BaseAPIRes) unknownResource(_ context.Context, w http.ResponseWriter,
 	w.WriteHeader(http.StatusNotFound)
 }
 
-func (bar *BaseAPIRes) storeID(c context.Context, req *http.Request) context.Context {
+func (bar *BaseAPIRes) storeID(c context.Context, req *http.Request) (context.Context, error) {
 	const curMethod = "storeID"
 	uriSegments := strings.Split(req.URL.Path, "/")
 	bar.Infow(curMethod, "Request URI", req.RequestURI, "Segment Count", len(uriSegments))
@@ -187,15 +187,19 @@ func (bar *BaseAPIRes) storeID(c context.Context, req *http.Request) context.Con
 	bar.Infow(curMethod, "Segments", uriSegments, "idVal", idVal, "len(idVal)", len(idVal))
 
 	if len(idVal) == 0 {
-		return context.WithValue(ctx, Key(fmt.Sprintf(keyPathHasSubSegment, bar.name.String())), false)
+		return context.WithValue(ctx, Key(fmt.Sprintf(keyPathHasSubSegment, bar.name.String())), false), nil
 	}
 	ctx = context.WithValue(ctx, Key(fmt.Sprintf(keyPathHasSubSegment, bar.name.String())), true)
 	v, found := bar.id.Find(idVal)
 	bar.Infow(curMethod, "idVal", idVal, "found", found, "v", v)
-	if found {
-		ctx = context.WithValue(ctx, Key(fmt.Sprintf("id_%s", bar.name.String())), v)
+	if !found {
+		// If the resource can't be found we have a problem; basically, a resource was specified but it's not valid
+		// so we need to respond with an error.
+		return ctx, ErrIDNotFound
 	}
-	return ctx
+
+	ctx = context.WithValue(ctx, Key(fmt.Sprintf("id_%s", bar.name.String())), v)
+	return ctx, nil
 }
 
 func (bar *BaseAPIRes) whichAction(ctx context.Context, httpMethod string) ActionType {
@@ -225,7 +229,11 @@ func (bar *BaseAPIRes) SetHandler(handler HandlerFunction) {
 }
 
 func (bar *BaseAPIRes) HandleCall(c context.Context, w http.ResponseWriter, req *http.Request) {
-	ctx := bar.storeID(c, req)
+	ctx, err := bar.storeID(c, req)
+	if err != nil {
+		bar.unknownResource(ctx, w, req)
+		return
+	}
 	at := bar.whichAction(ctx, req.Method)
 	if at == unknown {
 		bar.defaultFunction(ctx, w, req)

@@ -351,6 +351,13 @@ var _ = Describe("Api", func() {
 				expIDStr:    "1234",
 				errMatcher:  func(err error) { Expect(err).ToNot(HaveOccurred()) },
 			},
+			{
+				description: "Invalid ID",
+				outcome:     "should return the ID value even if it is invalid",
+				ctx:         context.WithValue(context.Background(), resweave.Key("id_foo"), "Not A Number"),
+				expIDStr:    "Not A Number",
+				errMatcher:  func(err error) { Expect(err).ToNot(HaveOccurred()) },
+			},
 		}
 
 		for _, e := range entries {
