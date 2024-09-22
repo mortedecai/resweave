@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
 
+_cvg_script_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+source ${_cvg_script_dir}/colors.sh
+
 usage() {
   echo "USAGE: coverage.sh <PROJECT ROOT> [report-types]"
   echo ""
   echo "report-types:"
-  echo -e " - ${CLR_START}${BRIGHT};all${GREEN}${CLR_END}${CLR_RESET}"
-  echo -e " - ${CLR_START}${BRIGHT};html${GREEN}${CLR_END}${CLR_RESET}"
-  echo -e " - ${CLR_START}${BRIGHT};out${GREEN}${CLR_END}${CLR_RESET}"
+  echo " - $(color -bright -green all)"
+  echo " - $(color -bright -green html)"
+  echo " - $(color -bright -green out)"
   echo ""
-  echo "* Note: No subcommand runs ${CLR_START}${ITALICS}${CLR_END}all${CLR_RESET}"
+  echo "* Note: No subcommand runs $(color -italics all)"
 
   exit $STATUS_USAGE_USED
 }

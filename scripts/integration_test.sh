@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
 
+_int_script_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+source ${_int_script_dir}/colors.sh
+
 usage() {
   echo "USAGE: integration_test.sh <PROJECT ROOT> [sub-command]"
-  echo ""
-  echo "sub-comands:"
-  echo -e " - ${CLR_START}${BRIGHT};${GREEN}${CLR_END}all${CLR_RESET}: Run the api & html integration tests"
-  echo -e " - ${CLR_START}${BRIGHT};${GREEN}${CLR_END}api${CLR_RESET}: Run the api integration tests"
-  echo -e " - ${CLR_START}${BRIGHT};${GREEN}${CLR_END}html${CLR_RESET}: Run the html integration tests"
-  echo -e " - ${CLR_START}${BRIGHT};${GREEN}${CLR_END}to-branch${CLR_RESET}: Update the integration tests to the current branch for resweave"
-  echo -e " - ${CLR_START}${BRIGHT};${GREEN}${CLR_END}to-version <version>${CLR_RESET}: Update the integration tests to the specified version"
-  echo ""
-  echo "* Note: No subcommand runs ${CLR_START}${ITALICS}${CLR_END}all${CLR_RESET}"
+  echo
+  echo "sub-commands:"
+  echo " - $(color -bright -green all): Run the api & html integration tests"
+  echo " - $(color -bright -green api): Run the api integration tests"
+  echo " - $(color -bright -green html): Run the html integration tests"
+  echo " - $(color -bright -green to-branch): Update the integration tests to the current branch"
+  echo " - $(color -bright -green to-version \<version\>): Update the integration tests to the specified version"
+  echo
+  echo "* Note: No subcommand runs $(color -italics all)"
 
   exit $STATUS_USAGE_USED
 }
@@ -143,14 +147,14 @@ update_all_tests_to_tag() {
 
 update_to_branch() {
     BRANCH_NAME=`git rev-parse --abbrev-ref HEAD`
-    echo "******** Updating Integration Tests to ${CLR_START};${CLR_GREEN}${CLR_END}${BRANCH_NAME}${CLR_RESET} ********"
+    echo "******** Updating Integration Tests to $(color -green ${BRANCH_NAME}) ********"
 
     update_all_tests_to_branch ${API_INTEGRATION_DIR} ${HTML_INTEGRATION_DIR}
 }
 
 update_to_version() {
     TAG=$1
-    echo "******** Updating Integration Tests to ${CLR_START};${CLR_GREEN}${CLR_END}${TAG}${CLR_RESET} ********"
+    echo "******** Updating Integration Tests to $(color -green ${TAG}) ********"
 
     update_all_tests_to_tag ${TAG} ${API_INTEGRATION_DIR} ${HTML_INTEGRATION_DIR}
 }

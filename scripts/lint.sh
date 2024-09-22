@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 
+_lint_script_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+source ${_lint_script_dir}/colors.sh
+
 usage() {
   echo "USAGE: lint.sh <PROJECT ROOT> [sub-command]"
   echo ""
-  echo "sub-comands:"
-  echo -e " - ${CLR_START}${BRIGHT};${GREEN}${CLR_END}all${CLR_RESET}"
+  echo "sub-commands:"
+  echo " - $(color -bright -green all)"
   echo ""
-  echo "* Note: No subcommand runs ${CLR_START}${ITALICS}${CLR_END}all${CLR_RESET}"
+  echo "* Note: No subcommand runs $(color -italics all)"
 
   exit $STATUS_USAGE_USED
 }

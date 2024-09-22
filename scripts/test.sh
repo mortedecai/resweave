@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
 
+_test_script_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+source ${_test_script_dir}/colors.sh
+
 usage() {
   echo "USAGE: test.sh <PROJECT ROOT> [sub-command]"
   echo ""
-  echo "sub-comands:"
-  echo -e " - ${CLR_START}${BRIGHT};${GREEN}${CLR_END}all${CLR_RESET}"
-  echo -e " - ${CLR_START}${BRIGHT};${GREEN}${CLR_END}unit${CLR_RESET}"
-  echo -e " - ${CLR_START}${BRIGHT};${GREEN}${CLR_END}integration${CLR_RESET}"
+  echo "sub-commands:"
+  echo " - $(color -bright -green all)"
+  echo " - $(color -bright -green unit)"
+  echo " - $(color -bright -green integration)"
   echo ""
-  echo "* Note: No subcommand runs ${CLR_START}${ITALICS}${CLR_END}all${CLR_RESET}"
+  echo "* Note: No subcommand runs $(color -italics all)"
 
   exit $STATUS_USAGE_USED
 }

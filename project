@@ -7,6 +7,7 @@
 PROJECT_ROOT=`git rev-parse --show-toplevel`
 PROJECT_NAME=`basename "$PROJECT_ROOT"`
 
+# Note that this loads scripts/colors.sh for us
 source $PROJECT_ROOT/scripts/log.sh
 
 ### EXIT CODES
@@ -17,15 +18,15 @@ STATUS_USAGE_USED=1
 
 usage() {
   echo "USAGE:  project <comamnd>"
-  echo ""
+  echo
   echo "commands:"
-  echo -e "  - ${CLR_START}${BRIGHT};${GREEN}${CLR_END}coverage${CLR_RESET}"
-  echo -e "  - ${CLR_START}${BRIGHT};${GREEN}${CLR_END}lint${CLR_RESET}"
-  echo -e "  - ${CLR_START}${BRIGHT};${GREEN}${CLR_END}test${CLR_RESET}"
-  echo ""
+  echo "  - $(color -bright -green coverage)"
+  echo "  - $(color -bright -green lint)"
+  echo "  - $(color -bright -green test)"
+  echo
   echo "  - all (all commands above) "
   echo "  - help (this message)"
-  echo ""
+  echo
   echo "Help for commands can be found by: project command help"
   exit $STATUS_USAGE_USED
 }
