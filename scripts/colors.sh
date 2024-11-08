@@ -108,28 +108,28 @@ color() {
   # start logic
   #
 
-  local _fgcolor=
-  local _bgcolor=
-  local _effect=
   local _text=
+  local _color_codes=
 
-  local _cname=
-  local _ename=
   while [ $# -gt 0 ]; do
     case $1 in
       -bg-*) # "*" must be a color name
         local _value=${1:4}
         _cname="_bg_${_value}"
-        [ -n "${!_cname}" ] && _bgcolor="${!_cname};"
+        [ -n "${!_cname}" ] && _color_codes+="${!_cname} "
         ;;
-      -*) # "*" must be a name (color or effect)
+      -*) # "*" may be a name (color or effect), or it's just more text
         local _value=${1:1}
-        _cname="_fg_${_value}"
-        _ename="_e_${_value}"
+        local _cname="_fg_${_value}"
+        local _ename="_e_${_value}"
         if [ -n "${!_cname}" ]; then
-          _fgcolor="${!_cname}"
+          _color_codes+="${!_cname} "
         elif [ -n "${!_ename}" ]; then
-          _effect+="${!_ename};"
+          _color_codes+="${!_ename} "
+        else
+          # no match: assume this is raw text
+          [ -n "${_text}" ] && _text+=" "
+          _text+="${1}"
         fi
         ;;
       *)
@@ -138,14 +138,25 @@ color() {
         ;;
     esac
     shift
-  done 
+  done
 
   # Allows effect, bg color and fg color to be specified in any order
   #   e.g. $(color -bright -red foo) and $(color -red -bright foo) are the same
   local _color=
-  [ -n "${_bgcolor}${_effect}${_fgcolor}" ] && _color="${_c_start}${_bgcolor}${_effect}${_fgcolor}${_c_end}"
-  local _msg="${_color}${_text}${_c_reset}"
+  for c in ${_color_codes}; do
+    _color+="$c;"
+  done
+  local _msg="${_c_start}${_color%%;}${_c_end}${_text}${_c_reset}"
   # echo "debug: msg = '${_msg}'"
   echo -e "${_msg}"
 }
 
+# Print "WARNING: $*" where 'WARNING' is in yellow
+warning() {
+  echo "$(color -bold -yellow WARNING): $*"
+}
+
+# Print "ERROR: $*", where 'ERROR' is red
+error() {
+  echo "$(color -bold -lt_red ERROR): $*"
+}

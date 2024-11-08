@@ -16,9 +16,10 @@ jobs:
           go-version: '^1.22'
       - run: ./project coverage
       - name: Static Check
-        uses: dominikh/staticcheck-action@v1.2.0
+        uses: dominikh/staticcheck-action@v1.3.0
         with:
-          version: "2023.1"
+          # TODO(keithpaterson): figure out why we must use "latest" version to avoid an error here
+          version: "2024.1"
           install-go: false
       - name: Run Gosec Security Scanner
         uses: securego/gosec@master
