@@ -6,38 +6,117 @@
 :img-security-rating: https://sonarcloud.io/api/project_badges/measure?project={sonar-project-id}&metric=security_rating&token={sonar-token}
 :img-reliability: https://sonarcloud.io/api/project_badges/measure?project={sonar-project-id}&metric=reliability_rating&token={sonar-token}
 :img-techdebt: https://sonarcloud.io/api/project_badges/measure?project={sonar-project-id}&metric=sqale_index&token={sonar-token}
-
 :uri-analysis: https://sonarcloud.io/summary/new_code?id={sonar-project-id}
+:toc:
+:toc-placement!:
 
-= Resweave - Resource Based Web Server
-
-Reweave is intended to be a resource based approach to serving web site and applications.
-Outside of initial path prefices to allow for versioning and possibly an initial grouping,
-the only way to add a path is to add a resource.
-
-== Project Health
-
-[.text-center]
-
+= Resweave
 
 |===
-|image:{img-quality-gate}[Quality Gate,link={uri-analysis}]|image:{img-coverage}[Coverage,link={uri-analysis}] |image:{img-maintainability}[Maintainability,link={uri-analysis}]
-
-|image:{img-reliability}[Reliability,link={uri-analysis}]
-|image:{img-security-rating}[Security Rating,link={uri-analysis}]
-|image:{img-techdebt}[Technical Debt,link={uri-analysis}]
-
+|image:{img-quality-gate}[Quality Gate,link={uri-analysis}]|image:{img-coverage}[Coverage,link={uri-analysis}] |image:{img-maintainability}[Maintainability,link={uri-analysis}] |image:{img-reliability}[Reliability,link={uri-analysis}] |image:{img-security-rating}[Security Rating,link={uri-analysis}] |image:{img-techdebt}[Technical Debt,link={uri-analysis}]
 |===
 
-== Project Status
+toc::[]
 
-|===
-| Date Initiated | Status | Completed? 
+== Resource Based Web Server
 
-| Nov 20, 2022
-| Initial design
-| _NO_
+> Let developers worry about coding, not routing
 
-|===
+Resweave is an opinionated resource based web server which strives to let developers worry about coding and not routing.
 
+To this end, Resweave:
 
+* Allows a path prefix for resources at the start of a path only; and
+* Uses the resource name to construct the path (e.g. `books` would result in a `/books` url)
+* Standardizes HTTP calls into specific functions against a resource (all of which are optional):
+** LIST all instances for the resource; and
+** CREATE a new instance of a resource; and
+** FETCH an instance of a resource by ID; and
+** UPDATE an instance of a resource by ID; and
+** DELETE an instance of a resource by ID.
+* Does not require developers to input routes in any specific order (longest regex matching).
+* Handles parsing IDs and storage in request contexts.
+* Provides an HTML and API resource out of the box.
+
+== Quick Start - Simple HTML Server
+
+In keeping with the philosophy of `Resweave`, the `resweave.HTMLResource` is implemented as a resource with `FETCH` support, where the ID is defined as any valid url string.
+
+For example, for an HTML server rooted at `/`:
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/mortedecai/resweave"
+	"go.uber.org/zap"
+)
+
+func main() {
+
+	server := resweave.NewServer(8080)
+	if l, err := zap.NewDevelopment(); err != nil {
+		// error handling for failure to create logger
+	} else {
+        // Set the created logger as the server logger and all resources.
+		server.SetLogger(l.Sugar(), true)
+	}
+
+	htmlResource := resweave.NewHTML("", "./html")
+	if err := server.AddResource(htmlResource); err == nil {
+		fmt.Println(server.Run())
+	} else {
+		fmt.Println(err.Error())
+	}
+}
+```
+
+Any request to `/` will result in serving the index file from `/html`.
+
+== Quick Start - Simple API Server
+
+Resweave provides a base APIResource which provides a default `405 Method Not Allowed` response to any of the defined actions above until an implementation is provided.
+
+A simple API server which provides a `LIST` of greetings could be implemented as follows (using a hardcoded list for demonstration only):
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/mortedecai/resweave"
+	"go.uber.org/zap"
+)
+
+func main() {
+
+	server := resweave.NewServer(8080)
+
+    // Omitting logger setup as it is the same as the previous example.
+
+	helloResource := resweave.NewAPI("hello")
+	helloResource.SetList(func(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+		v := ctx.Value(resweave.KeyRequestID)
+		msg := "Hello, World!"
+		if reqID, ok := v.(string); ok {
+			msg = fmt.Sprintf("%s\nRequest: '%s'\n", msg, reqID)
+		}
+		if bw, err := w.Write([]byte(msg)); err != nil {
+			logger.Errorw("Main", "Write Error", err, "Bytes Written", bw)
+		}
+	})
+
+	if err := server.AddResource(helloResource); err == nil {
+		fmt.Println(server.Run())
+	} else {
+		fmt.Println(err.Error())
+	}
+}
+```
+
+== Additional Documentation & Examples
+
+_TBD_

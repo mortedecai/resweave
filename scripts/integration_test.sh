@@ -44,14 +44,14 @@ run_test() {
     GOOS=linux GOARCH=amd64 go test -c -o bin/test ./...
     echo "Post-Build: ls $PWD/bin"
     ls -F bin/
-    docker-compose -f compose.yaml up server &
+    docker compose -f compose.yaml up server &
     sleep 5
     LOG_FILE=${PROJECT_ROOT}/.reports/${file_identifier}_test.log
-    docker-compose -f compose.yaml up libtest > ${LOG_FILE} 2>&1 
+    docker compose -f compose.yaml up libtest > ${LOG_FILE} 2>&1 
     cat ${LOG_FILE}
     TEST_RESULT=$(cat ${LOG_FILE} | grep "${EXIT_CODE_LINE}" | sed -E "s/${EXIT_CODE_PATTERN}/\1/g")
     echo "TEST_RESULT=${TEST_RESULT}"
-    docker-compose down
+    docker compose down
 }
 
 test_html() {
