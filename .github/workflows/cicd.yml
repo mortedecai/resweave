@@ -29,7 +29,7 @@ jobs:
         uses: securego/gosec@master
         with:
           # we let the report trigger content trigger a failure using the GitHub Security features.
-          args: './...'
+          args: '-exclude-dir testing/integration ./...'
       - name: Run Integration Tests
         if: ${{ contains(fromJson('["pull_request"]'), github.event_name) }}
         run: ./project test integration
