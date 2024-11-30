@@ -98,8 +98,8 @@ var _ = Describe("Host", func() {
 	})
 	Describe("HTML Usage", func() {
 		const (
-			htmlDir  = "testing/html/"
-			htmlDir2 = "testing/html2/"
+			htmlDir  = "test/html/"
+			htmlDir2 = "test/html2/"
 		)
 		It("should be possible to add an unnamed resource", func() {
 			Expect(caHost.AddResource(NewHTML("", htmlDir))).ToNot(HaveOccurred())

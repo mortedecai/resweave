@@ -1,4 +1,4 @@
-module github.com/mortedecai/resweave/testing/integration/html/multihosthello
+module github.com/mortedecai/resweave/test/integration/html/multiroothello
 
 go 1.23
 

@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	htmlDir = "testing/html/"
+	htmlDir = "test/html/"
 )
 
 var _ = Describe("Html", func() {

@@ -1,4 +1,4 @@
-module github.com/mortedecai/resweave/testing/integration/api/todo
+module github.com/mortedecai/resweave/test/integration/api/hello
 
 go 1.23
 
