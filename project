@@ -17,20 +17,26 @@ STATUS_USAGE_USED=1
 ## Function: usage -> Print the usage message and exit with status code STATUS_USAGE_USED
 
 usage() {
-  echo "USAGE:  project <comamnd>"
+  echo "USAGE:  project <command>"
   echo
   echo "commands:"
   echo "  - $(color -bright -green coverage)"
   echo "  - $(color -bright -green lint)"
   echo "  - $(color -bright -green test)"
   echo
-  echo "  - all (all commands above) "
+  echo "  - $(color -bright -green bump)"
+  echo
   echo "  - help (this message)"
   echo
   echo "Help for commands can be found by: project command help"
   exit $STATUS_USAGE_USED
 }
 
+## Function: cmd_lint -> Run the lint script with necessary parameters
+cmd_bump() {
+  echo "$PROJECT_ROOT/scripts/bump.sh $PROJECT_ROOT $@"
+  $PROJECT_ROOT/scripts/bump.sh -r $PROJECT_ROOT $@
+}
 ## Function: cmd_lint -> Run the lint script with necessary parameters
 cmd_lint() {
   $PROJECT_ROOT/scripts/lint.sh $PROJECT_ROOT $@
@@ -55,6 +61,10 @@ fi
 CMD=$1
 shift
 case $CMD in
+  bump)
+    log_info_stage "Bumping resweave version"
+    cmd_bump $@
+    ;;
   coverage)
     log_info_stage "Generating Coverage" $PROJECT_NAME
     cmd_coverage $@
