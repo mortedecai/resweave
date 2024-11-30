@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mortedecai/go-go-gadgets/env"
 	"github.com/mortedecai/resweave"
 	"go.uber.org/zap"
 )
@@ -352,7 +351,7 @@ func main() {
 	var logger *zap.SugaredLogger
 	var todoResource *TodoResource
 	var err error
-	port, _ := env.GetWithDefaultInt(varPort, defaultPort)
+	const port = 8080
 	server := resweave.NewServer(port)
 
 	if l, err := zap.NewDevelopment(); err != nil {

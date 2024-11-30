@@ -53,14 +53,14 @@ jobs:
           args: 'test/integration/html/multiroothello/...'
 
 
-      - name: Run Gosec Security Scanner
+      - name: Run Gosec Security Scanner - Integration Test API - Hello
         uses: securego/gosec@master
         with:
           # we let the report trigger content trigger a failure using the GitHub Security features.
           args: 'test/integration/api/hello/...'
 
 
-      - name: Run Gosec Security Scanner
+      - name: Run Gosec Security Scanner - Integration Test API - TODO App
         uses: securego/gosec@master
         with:
           # we let the report trigger content trigger a failure using the GitHub Security features.
