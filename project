@@ -61,7 +61,6 @@ CMD=$1
 shift
 case $CMD in
   bump)
-    log_info_stage "Bumping resweave version"
     cmd_bump $@
     ;;
   coverage)
