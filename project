@@ -34,7 +34,6 @@ usage() {
 
 ## Function: cmd_lint -> Run the lint script with necessary parameters
 cmd_bump() {
-  echo "$PROJECT_ROOT/scripts/bump.sh $PROJECT_ROOT $@"
   $PROJECT_ROOT/scripts/bump.sh -r $PROJECT_ROOT $@
 }
 ## Function: cmd_lint -> Run the lint script with necessary parameters
