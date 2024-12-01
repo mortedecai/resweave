@@ -32,7 +32,7 @@ usage() {
   exit $STATUS_USAGE_USED
 }
 
-## Function: cmd_lint -> Run the lint script with necessary parameters
+## Function: cmd_bump -> Bump the project version using supplied parameters
 cmd_bump() {
   $PROJECT_ROOT/scripts/bump.sh -r $PROJECT_ROOT $@
 }
