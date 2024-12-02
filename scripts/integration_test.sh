@@ -28,7 +28,7 @@ PROJECT_ROOT=$1
 shift
 pushd ${PROJECT_ROOT}
 PROJECT_ROOT_MODULE="$(grep 'module' ${PROJECT_ROOT}/go.mod | sed -E 's/^module[[:space:]]*//g')"
-INTEGRATION_DIR=${PROJECT_ROOT}/testing/integration
+INTEGRATION_DIR=${PROJECT_ROOT}/test/integration
 HTML_INTEGRATION_DIR=${INTEGRATION_DIR}/html
 API_INTEGRATION_DIR=${INTEGRATION_DIR}/api
 EXIT_CODE_LINE="exited with code"

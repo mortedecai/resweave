@@ -1,11 +1,10 @@
 :sonar-project-id: mortedecai_resweave
-:sonar-token: 8aad82ab5ebaa1c1d9d2a3049ca1a400125b2148
-:img-quality-gate: https://sonarcloud.io/api/project_badges/measure?project={sonar-project-id}&metric=alert_status&token={sonar-token}
-:img-coverage: https://sonarcloud.io/api/project_badges/measure?project={sonar-project-id}&metric=coverage&token={sonar-token}
-:img-maintainability: https://sonarcloud.io/api/project_badges/measure?project={sonar-project-id}&metric=sqale_rating&token={sonar-token}
-:img-security-rating: https://sonarcloud.io/api/project_badges/measure?project={sonar-project-id}&metric=security_rating&token={sonar-token}
-:img-reliability: https://sonarcloud.io/api/project_badges/measure?project={sonar-project-id}&metric=reliability_rating&token={sonar-token}
-:img-techdebt: https://sonarcloud.io/api/project_badges/measure?project={sonar-project-id}&metric=sqale_index&token={sonar-token}
+:img-quality-gate: https://sonarcloud.io/api/project_badges/measure?project={sonar-project-id}&metric=alert_status
+:img-coverage: https://sonarcloud.io/api/project_badges/measure?project={sonar-project-id}&metric=coverage
+:img-maintainability: https://sonarcloud.io/api/project_badges/measure?project={sonar-project-id}&metric=sqale_rating
+:img-security-rating: https://sonarcloud.io/api/project_badges/measure?project={sonar-project-id}&metric=security_rating
+:img-reliability: https://sonarcloud.io/api/project_badges/measure?project={sonar-project-id}&metric=reliability_rating
+:img-techdebt: https://sonarcloud.io/api/project_badges/measure?project={sonar-project-id}&metric=sqale_index
 :uri-analysis: https://sonarcloud.io/summary/new_code?id={sonar-project-id}
 :toc:
 :toc-placement!:

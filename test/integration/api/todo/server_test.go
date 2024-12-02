@@ -8,7 +8,7 @@ import (
 	"net/http"
 
 	"github.com/mortedecai/go-go-gadgets/env"
-	pkg "github.com/mortedecai/resweave/testing/integration/api/todo"
+	pkg "github.com/mortedecai/resweave/test/integration/api/todo"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ## Project script is intended to be the CLI inteface for manipulating / working with the resweave project as a developer.
 
@@ -17,20 +17,25 @@ STATUS_USAGE_USED=1
 ## Function: usage -> Print the usage message and exit with status code STATUS_USAGE_USED
 
 usage() {
-  echo "USAGE:  project <comamnd>"
+  echo "USAGE:  project <command>"
   echo
   echo "commands:"
   echo "  - $(color -bright -green coverage)"
   echo "  - $(color -bright -green lint)"
   echo "  - $(color -bright -green test)"
   echo
-  echo "  - all (all commands above) "
+  echo "  - $(color -bright -green bump)"
+  echo
   echo "  - help (this message)"
   echo
   echo "Help for commands can be found by: project command help"
   exit $STATUS_USAGE_USED
 }
 
+## Function: cmd_bump -> Bump the project version using supplied parameters
+cmd_bump() {
+  $PROJECT_ROOT/scripts/bump.sh -r $PROJECT_ROOT $@
+}
 ## Function: cmd_lint -> Run the lint script with necessary parameters
 cmd_lint() {
   $PROJECT_ROOT/scripts/lint.sh $PROJECT_ROOT $@
@@ -55,6 +60,9 @@ fi
 CMD=$1
 shift
 case $CMD in
+  bump)
+    cmd_bump $@
+    ;;
   coverage)
     log_info_stage "Generating Coverage" $PROJECT_NAME
     cmd_coverage $@

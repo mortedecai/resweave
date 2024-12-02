@@ -17,7 +17,7 @@ var _ = Describe("Server", func() {
 	const (
 		port = 8080
 		// htmlDir re-declared b/c it is not in resweave_test package.
-		htmlDir = "testing/html/"
+		htmlDir = "test/html/"
 	)
 
 	Describe("Initialization", func() {
