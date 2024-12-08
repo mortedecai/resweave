@@ -19,7 +19,7 @@ jobs:
 
       - name: Set PR Version Tag
         run: |
-          if [[ ${{ github.event.ref }} =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          if [[ ${{ github.ref }} =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "CUR_PROJECT_VERSION=$(./project bump -c)" >> "$GITHUB_ENV"
           else
             echo "CUR_PROJECT_VERSION=$(./project bump -d -s -v alpha)" >> "$GITHUB_ENV"
