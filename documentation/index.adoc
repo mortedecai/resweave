@@ -1,0 +1,33 @@
+:toc:
+:toc-placement!:
+:icons: font
+= Resweave
+
+> Let developers worry about coding, not routing.
+
+NOTE: This is an initial release with documentation and features expected to improve over time.
+
+toc::[]
+
+== Resource Based Web Server
+
+Resweave is an opinionated, resource based web server intended to facilitate web application development.
+
+In practice, this means that:
+
+. Resource chains are used to specify pathing.
+** Custom pathing is only allowed for a limited prefix.
+. Resources have pre-defined possible functionality:
+.. LIST - An HTTP `GET` to the `/<resource name>/` endpoint which returns a list `<resource>` entities.
+.. CREATE - An HTTP `POST` to the `/<resource name>/` endpoint which attempts to create a new `<resource>` entity.
+.. FETCH - An HTTP `GET` to the `/<resource name>/<id>` endpoint which attempts to retrieve the `<resource>` identified by `<id>`.
+.. UPDATE - An HTTP `PATCH` or PUT to the `/<resource name>/<id>` endpoint which attempts to update the `<resource>` identified by `<id>`.
+.. DELETE - An HTTP `DELETE` to the `/<resource name>/<id>` endpoint which attempts to delete the `<resource>` identified by `<id>`.
+. Any combination of these behaviours (or none of them) can exist on a resource.
+. Intelligent defaults
+. Paths dynamically built from resources to avoid developers thinking about route ordering.
+
+== Benefits of Resweave
+
+* Resweaves encourages developers to think of their web applications in terms of resources.
+* Simple, consistent coding paradigm makes consistency and maintenance easier.

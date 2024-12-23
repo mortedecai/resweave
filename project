@@ -21,6 +21,7 @@ usage() {
   echo
   echo "commands:"
   echo "  - $(color -bright -green coverage)"
+  echo "  - $(color -bright -green docs)"
   echo "  - $(color -bright -green lint)"
   echo "  - $(color -bright -green test)"
   echo
@@ -35,6 +36,10 @@ usage() {
 ## Function: cmd_bump -> Bump the project version using supplied parameters
 cmd_bump() {
   $PROJECT_ROOT/scripts/bump.sh -r $PROJECT_ROOT $@
+}
+## Function: cmd_docs -> Run the docs script with necessary parameters
+cmd_docs() {
+  $PROJECT_ROOT/scripts/compile-docs.sh $@ -r $PROJECT_ROOT
 }
 ## Function: cmd_lint -> Run the lint script with necessary parameters
 cmd_lint() {
@@ -66,6 +71,10 @@ case $CMD in
   coverage)
     log_info_stage "Generating Coverage" $PROJECT_NAME
     cmd_coverage $@
+    ;;
+  docs)
+    log_info_stage "Generating Documentation" $PROJECT_NAME
+    cmd_docs $@
     ;;
   lint)
     log_info_stage "Linting" $PROJECT_NAME
