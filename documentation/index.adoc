@@ -1,7 +1,18 @@
+include::resweave.vars[]
+:sonar-project-id: mortedecai_resweave
+:img-quality-gate: https://sonarcloud.io/api/project_badges/measure?project={sonar-project-id}&metric=alert_status
+:img-coverage: https://sonarcloud.io/api/project_badges/measure?project={sonar-project-id}&metric=coverage
+:img-maintainability: https://sonarcloud.io/api/project_badges/measure?project={sonar-project-id}&metric=sqale_rating
+:img-security-rating: https://sonarcloud.io/api/project_badges/measure?project={sonar-project-id}&metric=security_rating
+:img-reliability: https://sonarcloud.io/api/project_badges/measure?project={sonar-project-id}&metric=reliability_rating
+:img-techdebt: https://sonarcloud.io/api/project_badges/measure?project={sonar-project-id}&metric=sqale_index
+:uri-analysis: https://sonarcloud.io/summary/new_code?id={sonar-project-id}
 :toc:
 :toc-placement!:
 :icons: font
 = Resweave
+
+.Version: {resweave-version}
 
 > Let developers worry about coding, not routing.
 
@@ -31,3 +42,21 @@ In practice, this means that:
 
 * Resweaves encourages developers to think of their web applications in terms of resources.
 * Simple, consistent coding paradigm makes consistency and maintenance easier.
+
+== Commitment to Quality
+
+Resweave makes use of SonarCloud to measure and track project quality.
+
+|===
+|image:{img-quality-gate}[Quality Gate,link={uri-analysis}]|image:{img-coverage}[Coverage,link={uri-analysis}] |image:{img-maintainability}[Maintainability,link={uri-analysis}] |image:{img-reliability}[Reliability,link={uri-analysis}] |image:{img-security-rating}[Security Rating,link={uri-analysis}] |image:{img-techdebt}[Technical Debt,link={uri-analysis}]
+|===
+
+== Additional Documentation
+
+NOTE: The following documentation will be updated to link to it as it is created.
+
+1. link:usage.html[Usage Documentation]
+2. Quick Start Documentation
+    a. Quick Start - HTML Server
+    b. Quick Start - API Server
+    c. Quick Start - TODO App

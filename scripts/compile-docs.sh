@@ -21,6 +21,8 @@ usage() {
   echo " -r <dirname>: The root directory for the project"
   echo " -s <dirname>: Source directory to build asciidoctor documentation from (default: ${_docs_default_out_dir_})"
   echo ""
+  echo " -k: Keep intermediate files"
+  echo ""
   echo " -h: Print this message"
 
   exit $STATUS_USAGE_USED
@@ -36,7 +38,9 @@ docs_html() {
   local DOCS_OUT_DIR=$1
   shift
 
-  docker run -u $(id -u):$(id -g) -v ${DOCS_DIR}:/documents/ -v ${DOCS_OUT_DIR}:/docsout/ asciidoctor/docker-asciidoctor asciidoctor -b html5 index.adoc -D /docsout/
+  local _resweave_version_=$(git describe)
+  docker run -u $(id -u):$(id -g) -v ${DOCS_DIR}:/documents/ -v ${DOCS_OUT_DIR}:/docsout/ asciidoctor/docker-asciidoctor asciidoctor -b html5 index.adoc -a resweave-version:${_resweave_version_} -D /docsout/
+  docker run -u $(id -u):$(id -g) -v ${DOCS_DIR}:/documents/ -v ${DOCS_OUT_DIR}:/docsout/ asciidoctor/docker-asciidoctor asciidoctor -b html5 usage.adoc -a resweave-version:${_resweave_version_} -D /docsout/
 }
 
 docs_all() {
@@ -48,13 +52,17 @@ run() {
   local _docs_cmd_=$1
   local _docs_out_dir_=${_docs_default_out_dir_}
   local _docs_src_dir_=${_docs_default_src_dir_}
+  local _docs_keep_files_=0
   shift
 
   OPTIND=1
-  while getopts "o:r:s:h" arg; do
+  while getopts "o:r:s:hk" arg; do
     case "${arg}" in
       h)
         usage
+        ;;
+      k)
+        _docs_keep_files_=1
         ;;
       r)
         PROJECT_ROOT=${OPTARG}
@@ -83,7 +91,12 @@ run() {
     usage
   fi
 
+  envsubst < ${PROJECT_ROOT}/${_docs_src_dir_}/resweave.vars.tpl > ${PROJECT_ROOT}/${_docs_src_dir_}/resweave.vars
   docs_${_docs_cmd_} ${PROJECT_ROOT}/${_docs_src_dir_} ${PROJECT_ROOT}/${_docs_out_dir_}
+
+  if [[ ${_docs_keep_files_} -eq 0 ]]; then
+    rm ${PROJECT_ROOT}/${_docs_src_dir_}/resweave.vars
+  fi
 }
 
 run $@
