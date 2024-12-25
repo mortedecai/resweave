@@ -1,0 +1,34 @@
+= Resweave Components
+
+== resweave.Server
+
+The `resweave.Server` is the base component used to build out a service with Resweave.
+It provides the pathing logic and is the first point of filtering requests, based on the registered host(s) (if any).
+
+The `Server` is the point at which a logger can be supplied recursively for a common logging name.
+
+== resweave.Resource
+
+The `resweave.Resource` is the object on which operations can be performed.
+A `Resource` provides the actions to be handled in the Resweave system:
+
+* `LIST` - The generic `GET /<resource name>/`; and
+* `CREATE` - A `POST /<resource name>/` with the appropriate body to create a new instance; and
+* `FETCH` - A `GET /<resource name>/<id>` to retrieve a single resource instance; and
+* `UPDATE` - A `PATCH /<resource name>/<id>` or `PUT /<resource name>/<id>` to update thea
+* `DELETE` - A `DELETE /<resource name>/<id>` which deletes the resource entirely.
+
+=== resweave.HTMLResource
+
+A pre-implemented `resweave.Resource` which serves HTML pages.
+
+The `resweave.HTMLResource` makes use of the `FETCH` operation, with special coding to convert the empty ID `""` to map to an index file.
+
+=== resweave.APIResource
+
+A pre-implemented `resweave.Resource` which will direct the incoming HTTP method and path combinations to the appropriate function.
+For any of the `/<resource name>/<id>` paths, the `<id>` value will be stored in the context automatically.
+
+=== Implementing a Custom Resource
+
+A tutorial on how to implement a custom resource will be coming soon.

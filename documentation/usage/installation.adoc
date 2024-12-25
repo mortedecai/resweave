@@ -10,10 +10,10 @@ If you'd like to install tip of tree development version, use the command:
 
 If at any point you would like to test an in development branch, you can do this with the command:
 
-`$ go get -U github.com/mortedecai/reweave@[branch name]
+`$ go get -U github.com/mortedecai/reweave@[branch name]`
 
 e.g. dev/query-param-parsing is the feature development branch you want to use:
 
-`$ go get -U github.com/mortedecai/reweave@dev/query-param-parsing
+`$ go get -U github.com/mortedecai/reweave@dev/query-param-parsing`
 
 WARNING: Development branches are unsupported before being in review.

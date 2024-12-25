@@ -7,8 +7,10 @@ include::resweave.vars[]
 
 toc::[]
 
-:level-offset: +1
+:leveloffset: +1
 
 include::usage/installation.adoc[]
 
-include::usage/important-pieces.adoc[]
+include::usage/resweave-components.adoc[]
+
+:leveloffset: -1
