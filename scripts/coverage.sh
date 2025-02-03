@@ -10,7 +10,7 @@ usage() {
   echo "report-types:"
   echo " - $(color -bright -green all)"
   echo " - $(color -bright -green html)"
-  echo " - $(color -bright -green out)"
+  echo " - $(color -bright -green lcov)"
 
   exit $STATUS_USAGE_USED
 }
@@ -28,8 +28,7 @@ source ${PROJECT_ROOT}/scripts/status.sh
 source ${PROJECT_ROOT}/scripts/log.sh
 
 generate_coverage() {
-  GOPRIVATE=github.com/mortedecai go get -u
-  GOPRIVATE=github.com/mortedecai go test $1 $(grep "module" ${PROJECT_ROOT}/go.mod | sed -E "s/^module[[:space:]]*//g")
+  go test $1 $(grep "module" ${PROJECT_ROOT}/go.mod | sed -E "s/^module[[:space:]]*//g")
 }
 
 generate_coverage_file() {
@@ -48,12 +47,12 @@ generate_coverage_report() {
   go tool cover -${TYPE}=${REPORTS_DIR}/coverage.out -o ${REPORTS_DIR}/coverage.html
 }
 
-coverage_out() {
+coverage_lcov() {
   generate_coverage_file
 }
 
 coverage_html() {
-  coverage_out
+  coverage_lcov
   generate_coverage_report html
 }
 
@@ -65,8 +64,8 @@ if [ $# = 0 ]; then
   coverage_all
 else
     case $1 in
-      out)
-        coverage_out
+      lcov)
+        coverage_lcov
         ;;
       html)
         coverage_html
