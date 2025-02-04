@@ -444,15 +444,16 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div class="sectionbody">
 <div id="toc" class="toc">
 <div id="toctitle" class="title">Table of Contents</div>
-<ul class="sectlevel0">
-<li><a href="#_installation">Installation</a></li>
-<li><a href="#_important_resweave_pieces">Important Resweave Pieces</a>
 <ul class="sectlevel1">
+<li><a href="#_installation">Installation</a></li>
+<li><a href="#_resweave_components">Resweave Components</a>
+<ul class="sectlevel2">
 <li><a href="#_resweave_server">resweave.Server</a></li>
 <li><a href="#_resweave_resource">resweave.Resource</a>
-<ul class="sectlevel2">
+<ul class="sectlevel3">
 <li><a href="#_resweave_htmlresource">resweave.HTMLResource</a></li>
 <li><a href="#_resweave_apiresource">resweave.APIResource</a></li>
+<li><a href="#_implementing_a_custom_resource">Implementing a Custom Resource</a></li>
 </ul>
 </li>
 </ul>
@@ -461,12 +462,14 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </div>
 </div>
 </div>
-<h1 id="_installation" class="sect0">Installation</h1>
+<div class="sect1">
+<h2 id="_installation">Installation</h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p>To install the most recent version (<code>v0.0.3</code>):</p>
+<p>To install the most recent version (<code></code>):</p>
 </div>
 <div class="paragraph">
-<p><code>$ go get -U github.com/mortedecai/reweave@v0.0.3</code></p>
+<p><code>$ go get -U github.com/mortedecai/reweave@</code></p>
 </div>
 <div class="paragraph">
 <p>If you&#8217;d like to install tip of tree development version, use the command:</p>
@@ -478,13 +481,13 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <p>If at any point you would like to test an in development branch, you can do this with the command:</p>
 </div>
 <div class="paragraph">
-<p>`$ go get -U github.com/mortedecai/reweave@[branch name]</p>
+<p><code>$ go get -U github.com/mortedecai/reweave@[branch name]</code></p>
 </div>
 <div class="paragraph">
 <p>e.g. dev/query-param-parsing is the feature development branch you want to use:</p>
 </div>
 <div class="paragraph">
-<p>`$ go get -U github.com/mortedecai/reweave@dev/query-param-parsing</p>
+<p><code>$ go get -U github.com/mortedecai/reweave@dev/query-param-parsing</code></p>
 </div>
 <div class="admonitionblock warning">
 <table>
@@ -498,31 +501,67 @@ Development branches are unsupported before being in review.
 </tr>
 </table>
 </div>
-<h1 id="_important_resweave_pieces" class="sect0">Important Resweave Pieces</h1>
-<div class="sect1">
-<h2 id="_resweave_server">resweave.Server</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>&#8230;&#8203;lorem ipusum fillit inum&#8230;&#8203;</p>
-</div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_resweave_resource">resweave.Resource</h2>
+<h2 id="_resweave_components">Resweave Components</h2>
 <div class="sectionbody">
+<div class="sect2">
+<h3 id="_resweave_server">resweave.Server</h3>
 <div class="paragraph">
-<p>&#8230;&#8203;lorem ipusum fillit inum&#8230;&#8203;</p>
+<p>The <code>resweave.Server</code> is the base component used to build out a service with Resweave.
+It provides the pathing logic and is the first point of filtering requests, based on the registered host(s) (if any).</p>
+</div>
+<div class="paragraph">
+<p>The <code>Server</code> is the point at which a logger can be supplied recursively for a common logging name.</p>
+</div>
 </div>
 <div class="sect2">
-<h3 id="_resweave_htmlresource">resweave.HTMLResource</h3>
+<h3 id="_resweave_resource">resweave.Resource</h3>
 <div class="paragraph">
-<p>&#8230;&#8203;lorem ipusum fillit inum&#8230;&#8203;</p>
+<p>The <code>resweave.Resource</code> is the object on which operations can be performed.
+A <code>Resource</code> provides the actions to be handled in the Resweave system:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>LIST</code> - The generic <code>GET /&lt;resource name&gt;/</code>; and</p>
+</li>
+<li>
+<p><code>CREATE</code> - A <code>POST /&lt;resource name&gt;/</code> with the appropriate body to create a new instance; and</p>
+</li>
+<li>
+<p><code>FETCH</code> - A <code>GET /&lt;resource name&gt;/&lt;id&gt;</code> to retrieve a single resource instance; and</p>
+</li>
+<li>
+<p><code>UPDATE</code> - A <code>PATCH /&lt;resource name&gt;/&lt;id&gt;</code> or <code>PUT /&lt;resource name&gt;/&lt;id&gt;</code> to update thea</p>
+</li>
+<li>
+<p><code>DELETE</code> - A <code>DELETE /&lt;resource name&gt;/&lt;id&gt;</code> which deletes the resource entirely.</p>
+</li>
+</ul>
+</div>
+<div class="sect3">
+<h4 id="_resweave_htmlresource">resweave.HTMLResource</h4>
+<div class="paragraph">
+<p>A pre-implemented <code>resweave.Resource</code> which serves HTML pages.</p>
+</div>
+<div class="paragraph">
+<p>The <code>resweave.HTMLResource</code> makes use of the <code>FETCH</code> operation, with special coding to convert the empty ID <code>""</code> to map to an index file.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="_resweave_apiresource">resweave.APIResource</h3>
+<div class="sect3">
+<h4 id="_resweave_apiresource">resweave.APIResource</h4>
 <div class="paragraph">
-<p>&#8230;&#8203;lorem ipusum fillit inum&#8230;&#8203;</p>
+<p>A pre-implemented <code>resweave.Resource</code> which will direct the incoming HTTP method and path combinations to the appropriate function.
+For any of the <code>/&lt;resource name&gt;/&lt;id&gt;</code> paths, the <code>&lt;id&gt;</code> value will be stored in the context automatically.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_implementing_a_custom_resource">Implementing a Custom Resource</h4>
+<div class="paragraph">
+<p>A tutorial on how to implement a custom resource will be coming soon.</p>
+</div>
 </div>
 </div>
 </div>
@@ -530,7 +569,7 @@ Development branches are unsupported before being in review.
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2024-12-24 02:24:36 UTC
+Last updated 2024-12-24 17:14:40 UTC
 </div>
 </div>
 </body>
