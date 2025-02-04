@@ -1,0 +1,10 @@
+include::resweave.vars[]
+:toc:
+:toclevels: 5
+:toc-placement!:
+:icons: font
+= Resweave Quickstart - HTML Server
+
+toc::[]
+
+:leveloffset: +1
