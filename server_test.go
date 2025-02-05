@@ -136,7 +136,7 @@ var _ = Describe("Server", func() {
 				req, err := http.NewRequest(http.MethodGet, "/", nil)
 				Expect(err).ToNot(HaveOccurred())
 
-				s.(*server).Serve(recorder, req)
+				s.(*server).serve(recorder, req)
 				response := recorder.Result()
 				defer response.Body.Close()
 				Expect(response.StatusCode).To(Equal(http.StatusOK))
@@ -187,8 +187,8 @@ var _ = Describe("Server", func() {
 				req2, err := http.NewRequest(http.MethodGet, "https://localhost:8080/", nil)
 				Expect(err).ToNot(HaveOccurred())
 
-				s.(*server).Serve(recorder, req)
-				s.(*server).Serve(recorder2, req2)
+				s.(*server).serve(recorder, req)
+				s.(*server).serve(recorder2, req2)
 				response := recorder.Result()
 				response2 := recorder2.Result()
 				defer response.Body.Close()
