@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 
 	"github.com/mortedecai/resweave"
 	. "github.com/onsi/ginkgo/v2"
@@ -34,25 +35,20 @@ var _ = Describe("Api", func() {
 			Expect(res).ToNot(BeNil())
 			Expect(res.Name()).To(Equal(name))
 		})
-		It("should return a 405 for all methods initially", func() {
-			testData := []struct {
-				method string
-				path   string
-			}{
-				{http.MethodGet, "/"},
-				{http.MethodPost, "/"},
-				{http.MethodPut, "/"},
-				{http.MethodPatch, "/"},
-				{http.MethodDelete, "/"},
-				{"NOSUCHMETHOD", "/"},
-			}
-			for _, v := range testData {
-				req, err := http.NewRequest(v.method, v.path, nil)
+		DescribeTable("All methods should 405 initially",
+			func(method string, path string, ctx context.Context) {
+				req, err := http.NewRequest(method, path, nil)
 				Expect(err).ToNot(HaveOccurred())
-				resultsMatch(http.StatusMethodNotAllowed, res, req)
-			}
-
-		})
+				_, _ = resultsMatch(http.StatusMethodNotAllowed, ctx, res, req)
+			},
+			Entry("GET", http.MethodGet, "/", contextWithURISegments([]string{})),
+			Entry("POST", http.MethodPost, "/", contextWithURISegments([]string{})),
+			Entry("GET", http.MethodGet, "/1/", contextWithURISegments([]string{"1"})),
+			Entry("PUT", http.MethodPut, "/1/", contextWithURISegments([]string{"1"})),
+			Entry("PATCH", http.MethodPatch, "/1/", contextWithURISegments([]string{"1"})),
+			Entry("DELETE", http.MethodDelete, "/1/", contextWithURISegments([]string{"1"})),
+			Entry("NOSUCHMETHOD", "NOSUCHMETHOD", "/", contextWithURISegments([]string{""})),
+		)
 	})
 	var _ = Describe("Logger handling", func() {
 		var (
@@ -92,7 +88,7 @@ var _ = Describe("Api", func() {
 			req, err := http.NewRequest(http.MethodGet, "/", nil)
 			Expect(err).ToNot(HaveOccurred())
 
-			res.HandleCall(context.TODO(), recorder, req)
+			res.HandleCall(contextWithURISegments([]string{}), recorder, req)
 			response := recorder.Result()
 			defer response.Body.Close()
 			Expect(response.StatusCode).To(Equal(http.StatusMethodNotAllowed))
@@ -121,14 +117,14 @@ var _ = Describe("Api", func() {
 			req2, err := http.NewRequest(http.MethodPost, "/", nil)
 			Expect(err).ToNot(HaveOccurred())
 
-			res.HandleCall(context.TODO(), recorder, req)
+			res.HandleCall(contextWithURISegments([]string{}), recorder, req)
 			response := recorder.Result()
 			defer response.Body.Close()
 			Expect(response.StatusCode).To(Equal(http.StatusOK))
 			respData, err := io.ReadAll(response.Body)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(string(respData)).To(Equal(expContents))
-			respData, err = resultsMatch(http.StatusMethodNotAllowed, res, req2)
+			respData, err = resultsMatch(http.StatusMethodNotAllowed, contextWithURISegments([]string{}), res, req2)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(string(respData)).To(Equal(""))
 		})
@@ -154,116 +150,79 @@ var _ = Describe("Api", func() {
 			Expect(err).ToNot(HaveOccurred())
 			req2, err := http.NewRequest(http.MethodGet, "/", nil)
 			Expect(err).ToNot(HaveOccurred())
-			respData, err := resultsMatch(http.StatusCreated, res, req)
+			respData, err := resultsMatch(http.StatusCreated, contextWithURISegments([]string{}), res, req)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(string(respData)).To(Equal(expContents))
-			respData, err = resultsMatch(http.StatusMethodNotAllowed, res, req2)
+			respData, err = resultsMatch(http.StatusMethodNotAllowed, contextWithURISegments([]string{}), res, req2)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(string(respData)).To(Equal(""))
 		})
-		It("should be possible to add all viable functions to an API resource", func() {
-			res.SetCreate(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
-				w.WriteHeader(http.StatusCreated)
-			})
-			res.SetList(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
-				w.WriteHeader(http.StatusOK)
-			})
-			res.SetID(resweave.NumericID)
-			res.SetFetch(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
-				w.WriteHeader(http.StatusTeapot)
-			})
-			res.SetDelete(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
-				w.WriteHeader(http.StatusNoContent)
-			})
-			testData := []struct {
-				method    string
-				path      string
-				expStatus int
-			}{
-				{http.MethodGet, "/", http.StatusOK},
-				{http.MethodGet, "/21/", http.StatusTeapot},
-				{http.MethodPost, "/", http.StatusCreated},
-				/* TODO:  Uncomment as these methods are added */
-				// {http.MethodPut, "/"},
-				// {http.MethodPatch, "/"},
-				{http.MethodDelete, "/", http.StatusNoContent},
-				{"NOSUCHMETHOD", "/", http.StatusMethodNotAllowed},
-			}
-			for _, v := range testData {
-				req, err := http.NewRequest(v.method, v.path, nil)
+		DescribeTable("should be possible to add all viable functions to an API resource",
+			func(method string, path string, ctx context.Context, expStatus int) {
+				res.SetCreate(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusCreated)
+				})
+				res.SetList(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusOK)
+				})
+				res.SetID(resweave.NumericID)
+				res.SetFetch(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusTeapot)
+				})
+				res.SetDelete(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusNoContent)
+				})
+				res.SetUpdate(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusAlreadyReported)
+				})
+				req, err := http.NewRequest(method, path, nil)
 				Expect(err).ToNot(HaveOccurred())
-				resultsMatch(v.expStatus, res, req)
-			}
+				_, _ = resultsMatch(expStatus, ctx, res, req)
+			},
+			Entry("LIST", http.MethodGet, "/", contextWithURISegments([]string{}), http.StatusOK),
+			Entry("FETCH", http.MethodGet, "/21/", contextWithURISegments(strings.Split("/21/", "/")), http.StatusTeapot),
+			Entry("CREATE", http.MethodPost, "/", contextWithURISegments([]string{}), http.StatusCreated),
+			Entry("UPDATE - Put", http.MethodPut, "/21/", contextWithURISegments([]string{"21"}), http.StatusAlreadyReported),
+			Entry("UPDATE - Patch", http.MethodPatch, "/21/", contextWithURISegments([]string{"21"}), http.StatusAlreadyReported),
+			Entry("DELETE", http.MethodDelete, "/1/", contextWithURISegments([]string{("1")}), http.StatusNoContent),
+			Entry("Unknown method", "NOSUCHMETHOD", "/", contextWithURISegments([]string{}), http.StatusMethodNotAllowed),
+		)
+		DescribeTable("should be possible to add all viable functions to, then remove them from, an API resource",
+			func(method string, path string, ctx context.Context, expStatus int) {
+				res.SetCreate(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusCreated)
+				})
+				res.SetList(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusOK)
+				})
+				res.SetID(resweave.NumericID)
+				res.SetFetch(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusTeapot)
+				})
+				res.SetDelete(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusNoContent)
+				})
+				res.SetUpdate(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusAlreadyReported)
+				})
+				res.SetCreate(nil)
+				res.SetList(nil)
+				res.SetFetch(nil)
+				res.SetUpdate(nil)
+				res.SetDelete(nil)
+				req, err := http.NewRequest(method, path, nil)
+				Expect(err).ToNot(HaveOccurred())
+				_, _ = resultsMatch(expStatus, ctx, res, req)
 
-		})
-		It("should be possible to add all and then delete all viable functions to an API resource", func() {
-			res.SetCreate(func(_ context.Context, w http.ResponseWriter, req *http.Request) {
-				if req.Method != http.MethodPost {
-					w.WriteHeader(http.StatusMethodNotAllowed)
-					return
-				}
-				w.WriteHeader(http.StatusCreated)
-			})
-			res.SetList(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
-				w.WriteHeader(http.StatusOK)
-			})
-			res.SetID(resweave.NumericID)
-			res.SetFetch(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
-				w.WriteHeader(http.StatusTeapot)
-			})
-			res.SetDelete(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
-				w.WriteHeader(http.StatusNoContent)
-			})
-			res.SetUpdate(func(_ context.Context, w http.ResponseWriter, req *http.Request) {
-				if req.Method != http.MethodPatch && req.Method != http.MethodPut {
-					w.WriteHeader(http.StatusMethodNotAllowed)
-					return
-				}
-				w.WriteHeader(http.StatusAccepted)
-			})
-
-			testData := []struct {
-				method    string
-				path      string
-				expStatus int
-			}{
-				{http.MethodGet, "/", http.StatusOK},
-				{http.MethodGet, "/21/", http.StatusTeapot},
-				{http.MethodPost, "/", http.StatusCreated},
-				{http.MethodPut, "/21/", http.StatusAccepted},
-				{http.MethodPatch, "/21/", http.StatusAccepted},
-				{http.MethodDelete, "/", http.StatusNoContent},
-				{"NOSUCHMETHOD", "/", http.StatusMethodNotAllowed},
-			}
-			for _, v := range testData {
-				req, err := http.NewRequest(v.method, v.path, nil)
-				Expect(err).ToNot(HaveOccurred())
-				resultsMatch(v.expStatus, res, req)
-			}
-			res.SetCreate(nil)
-			res.SetList(nil)
-			res.SetFetch(nil)
-			res.SetUpdate(nil)
-			res.SetDelete(nil)
-			testData = []struct {
-				method    string
-				path      string
-				expStatus int
-			}{
-				{http.MethodGet, "/", http.StatusMethodNotAllowed},
-				{http.MethodGet, "/21/", http.StatusMethodNotAllowed},
-				{http.MethodPost, "/", http.StatusMethodNotAllowed},
-				{http.MethodPut, "/21/", http.StatusMethodNotAllowed},
-				{http.MethodPatch, "/21/", http.StatusMethodNotAllowed},
-				{http.MethodDelete, "/", http.StatusMethodNotAllowed},
-				{"NOSUCHMETHOD", "/", http.StatusMethodNotAllowed},
-			}
-			for _, v := range testData {
-				req, err := http.NewRequest(v.method, v.path, nil)
-				Expect(err).ToNot(HaveOccurred())
-				resultsMatch(v.expStatus, res, req)
-			}
-		})
+			},
+			Entry("LIST", http.MethodGet, "/", contextWithURISegments([]string{}), http.StatusMethodNotAllowed),
+			Entry("FETCH", http.MethodGet, "/21/", contextWithURISegments(strings.Split("/21/", "/")), http.StatusMethodNotAllowed),
+			Entry("CREATE", http.MethodPost, "/", contextWithURISegments([]string{}), http.StatusMethodNotAllowed),
+			Entry("UPDATE - Put", http.MethodPut, "/21/", contextWithURISegments([]string{"21"}), http.StatusMethodNotAllowed),
+			Entry("UPDATE - Patch", http.MethodPatch, "/21/", contextWithURISegments([]string{"21"}), http.StatusMethodNotAllowed),
+			Entry("DELETE", http.MethodDelete, "/1/", contextWithURISegments([]string{("1")}), http.StatusMethodNotAllowed),
+			Entry("Unknown method", "NOSUCHMETHOD", "/", contextWithURISegments([]string{}), http.StatusMethodNotAllowed),
+		)
 		It("should allow a custom handler to be registered", func() {
 			// Arrange
 			handled := false
@@ -274,7 +233,7 @@ var _ = Describe("Api", func() {
 			// Act
 			req, err := http.NewRequest(http.MethodPost, "/test", nil)
 			Expect(err).ToNot(HaveOccurred())
-			res.HandleCall(context.TODO(), nil, req)
+			res.HandleCall(contextWithURISegments([]string{"test"}), nil, req)
 
 			// Assert
 			Expect(handled).To(BeTrue())
@@ -282,44 +241,32 @@ var _ = Describe("Api", func() {
 	})
 
 	var _ = Describe("Fetch & List Handling", func() {
-		var (
-			res    resweave.APIResource
-			logger *zap.SugaredLogger
-		)
-		BeforeEach(func() {
+		var ()
+		DescribeTable("should return the correct status code",
+			func(method string, path string, ctx context.Context, expStatus int) {
+				res := resweave.NewAPI("users")
+				res.SetID(resweave.NumericID)
 
-			res = resweave.NewAPI("users")
-			res.SetID(resweave.NumericID)
+				res.SetFetch(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusNoContent)
+				})
 
-			res.SetFetch(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
-				w.WriteHeader(http.StatusNoContent)
-			})
-
-			res.SetList(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
-				w.WriteHeader(http.StatusAccepted)
-			})
-			l, err := zap.NewDevelopment()
-			Expect(err).ToNot(HaveOccurred())
-			logger = l.Sugar()
-			res.SetLogger(logger, true)
-		})
-		It("should return the correct status code", func() {
-			testData := []struct {
-				method    string
-				path      string
-				expStatus int
-			}{
-				{http.MethodGet, res.Name().String() + "/", http.StatusAccepted},
-				{http.MethodGet, res.Name().String() + "/1", http.StatusNoContent},
-				{http.MethodGet, res.Name().String() + "/1/", http.StatusNoContent},
-				{http.MethodGet, res.Name().String() + "/a/", http.StatusNotFound},
-			}
-			for _, v := range testData {
-				req, err := http.NewRequest(v.method, v.path, nil)
+				res.SetList(func(_ context.Context, w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusAccepted)
+				})
+				l, err := zap.NewDevelopment()
 				Expect(err).ToNot(HaveOccurred())
-				resultsMatch(v.expStatus, res, req)
-			}
-		})
+				logger := l.Sugar()
+				res.SetLogger(logger, true)
+				req, err := http.NewRequest(method, path, nil)
+				Expect(err).ToNot(HaveOccurred())
+				_, _ = resultsMatch(expStatus, ctx, res, req)
+			},
+			Entry("LIST", http.MethodGet, "users/", contextWithURISegments(strings.Split("users/", "/")), http.StatusAccepted),
+			Entry("FETCH /<id>", http.MethodGet, "users/1", contextWithURISegments(strings.Split("users/1", "/")), http.StatusNoContent),
+			Entry("FETCH /<id>/", http.MethodGet, "users/1/", contextWithURISegments(strings.Split("users/1/", "/")), http.StatusNoContent),
+			Entry("FETCH /<bad id>/", http.MethodGet, "users/a/", contextWithURISegments(strings.Split("users/a/", "/")), http.StatusNotFound),
+		)
 	})
 
 	var _ = Describe("GetIDValue", func() {
@@ -372,13 +319,61 @@ var _ = Describe("Api", func() {
 			})
 		}
 	})
+
+	var _ = Describe("AddSubResource", func() {
+		It("should be possible to add a sub-resource", func() {
+			res := resweave.NewAPI("foo")
+			subRes := resweave.NewAPI("bar")
+			err := res.AddSubResource(subRes)
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("should error if the sub-resource is nil", func() {
+			res := resweave.NewAPI("foo")
+			err := res.AddSubResource(nil)
+			Expect(err).To(MatchError(resweave.ErrNilResource))
+		})
+		It("should error if the sub-resource is already added", func() {
+			res := resweave.NewAPI("foo")
+			subRes := resweave.NewAPI("bar")
+			err := res.AddSubResource(subRes)
+			Expect(err).ToNot(HaveOccurred())
+			err = res.AddSubResource(subRes)
+			Expect(err).To(MatchError(resweave.ErrResourceAlreadyExists))
+		})
+	})
+
+	var _ = Describe("AddInstancedSubResource", func() {
+		It("should be possible to add a sub-resource", func() {
+			res := resweave.NewAPI("foo")
+			subRes := resweave.NewAPI("bar")
+			err := res.AddInstancedSubResource(subRes)
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("should error if the sub-resource is nil", func() {
+			res := resweave.NewAPI("foo")
+			err := res.AddInstancedSubResource(nil)
+			Expect(err).To(MatchError(resweave.ErrNilResource))
+		})
+		It("should error if the sub-resource is already added", func() {
+			res := resweave.NewAPI("foo")
+			subRes := resweave.NewAPI("bar")
+			err := res.AddInstancedSubResource(subRes)
+			Expect(err).ToNot(HaveOccurred())
+			err = res.AddInstancedSubResource(subRes)
+			Expect(err).To(MatchError(resweave.ErrInstancedResourceAlreadyExists))
+		})
+	})
 })
 
-func resultsMatch(expStatusCode int, res resweave.Resource, req *http.Request) ([]byte, error) {
+func resultsMatch(expStatusCode int, inputContext context.Context, res resweave.Resource, req *http.Request) ([]byte, error) {
 	recorder := httptest.NewRecorder()
-	res.HandleCall(context.TODO(), recorder, req)
+	res.HandleCall(inputContext, recorder, req)
 	response := recorder.Result()
 	defer response.Body.Close()
 	Expect(response.StatusCode).To(Equal(expStatusCode))
 	return io.ReadAll(response.Body)
+}
+
+func contextWithURISegments(segments []string) context.Context {
+	return context.WithValue(context.Background(), resweave.KeyURISegments, resweave.ResourceNames(segments))
 }
