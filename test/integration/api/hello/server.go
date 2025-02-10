@@ -32,6 +32,18 @@ func main() {
 			logger.Errorw("Main", "Write Error", err, "Bytes Written", bw)
 		}
 	})
+	translateResource := resweave.NewAPI("translate")
+	translateResource.SetList(func(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+		v := ctx.Value(resweave.KeyRequestID)
+		msg := "Bonjour, Toute le monde!"
+		if reqID, ok := v.(string); ok {
+			msg = fmt.Sprintf("%s\nRequest: '%s'\n", msg, reqID)
+		}
+		if bw, err := w.Write([]byte(msg)); err != nil {
+			logger.Errorw("Main", "Write Error", err, "Bytes Written", bw)
+		}
+	})
+	helloResource.AddSubResource(translateResource)
 
 	if err := server.AddResource(helloResource); err == nil {
 		fmt.Println(server.Run())

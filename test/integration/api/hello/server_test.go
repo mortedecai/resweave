@@ -13,12 +13,14 @@ import (
 var _ = Describe("Hello", func() {
 	It("should be possible to receive \"Hello, World!\" from the hello LIST endpoint", func() {
 		td := createTestData("Hello, World!\nRequest: '[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}'")
-		td.RunTest()
+		td.RunTest("http://%s:8080/hello")
+		td = createTestData("Bonjour, Toute le monde!\nRequest: '[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}'")
+		td.RunTest("http://%s:8080/hello/translate")
 	})
 })
 
 type TestData interface {
-	RunTest()
+	RunTest(string)
 }
 
 func createTestData(exp string) TestData {
@@ -31,8 +33,8 @@ type resweaveAPITestData struct {
 	host string
 }
 
-func (r resweaveAPITestData) RunTest() {
-	r.runTest(fmt.Sprintf("http://%s:8080/hello", r.host))
+func (r resweaveAPITestData) RunTest(formatableURI string) {
+	r.runTest(fmt.Sprintf(formatableURI, r.host))
 }
 
 func (r resweaveAPITestData) runTest(uri string) {

@@ -14,6 +14,8 @@ github.com/mortedecai/go-go-gadgets v0.2.2 h1:39hBdkfRSopKNxSE822HjgqLUiYoRby+2D
 github.com/mortedecai/go-go-gadgets v0.2.2/go.mod h1:vzA02yeVa96AupAgjq2u6RhiUKS1KQ1IeXaqY/Zijns=
 github.com/mortedecai/resweave v0.0.1 h1:0UnU2Zk6P3CJZRewRPpUObXCoK+pjXmT83PUnSJZd58=
 github.com/mortedecai/resweave v0.0.1/go.mod h1:tiefX5+BIH18J35QkDRJaW+uoAIkWe3ZSSyrNgFiX/0=
+github.com/mortedecai/resweave v0.0.4-0.20250210022623-8c60769939ef h1:WF5F0zb4r0E/1FctJv5XYt8mbPhzRSDq5iyTuII/qTY=
+github.com/mortedecai/resweave v0.0.4-0.20250210022623-8c60769939ef/go.mod h1:3n3deOc1nzzOzE8xCBgqcwvbCtDujdOcobaJ2sgQprg=
 github.com/onsi/ginkgo/v2 v2.22.0 h1:Yed107/8DjTr0lKCNt7Dn8yQ6ybuDRQoMGrNFKzMfHg=
 github.com/onsi/ginkgo/v2 v2.22.0/go.mod h1:7Du3c42kxCUegi0IImZ1wUQzMBVecgIHjR1C+NkhLQo=
 github.com/onsi/gomega v1.36.0 h1:Pb12RlruUtj4XUuPUqeEWc6j5DkVVVA49Uf6YLfC95Y=
