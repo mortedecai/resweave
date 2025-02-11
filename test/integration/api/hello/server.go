@@ -43,7 +43,10 @@ func main() {
 			logger.Errorw("Main", "Write Error", err, "Bytes Written", bw)
 		}
 	})
-	helloResource.AddSubResource(translateResource)
+	if err := helloResource.AddSubResource(translateResource); err != nil {
+		fmt.Println(err.Error())
+		panic(err)
+	}
 
 	if err := server.AddResource(helloResource); err == nil {
 		fmt.Println(server.Run())
