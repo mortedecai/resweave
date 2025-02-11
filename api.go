@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
-	"strings"
 )
 
 // Key is a key type for looking up a resweave data in the context
@@ -29,8 +28,11 @@ const (
 	NumericID ID = ID("([0-9]+)")
 	UUIDv7    ID = ID(`^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$`)
 
-	keyPathHasSubSegment = "pathHasSubSegment_%s"
-	KeyRequestID         = Key("INCOMING_REQUEST_ID")
+	keyPathHasSubSegment              = "pathHasSubSegment_%s"
+	KeyURISegments                    = Key("URI_SEGMENTS")
+	KeyRequestID                      = Key("INCOMING_REQUEST_ID")
+	fmtResourceAlreadyExists          = "%w: '%s' in '%s'"
+	fmtInstancedResourceAlreadyExists = "%w: '<id>/%s' in '%s'"
 )
 
 const (
@@ -43,7 +45,10 @@ const (
 )
 
 var (
-	ErrIDNotFound = errors.New("no ID found")
+	ErrIDNotFound                     = errors.New("no ID found")
+	ErrNilResource                    = errors.New("cannot add a nil resource")
+	ErrResourceAlreadyExists          = errors.New("sub-resource already exists")
+	ErrInstancedResourceAlreadyExists = errors.New("instanced sub-resource already exists")
 )
 
 func (at ActionType) String() string {
@@ -78,30 +83,58 @@ func (i ID) Find(s string) (string, bool) {
 type APIResource interface {
 	Resource
 	LogHolder
+	// SetList sets the function to use for handling incoming list requests.
 	SetList(f ResweaveFunc)
+	// SetCreate sets the function to use for handling incoming create requests.
 	SetCreate(f ResweaveFunc)
+	// SetFetch sets the function to use for handling incoming fetch requests.
 	SetFetch(f ResweaveFunc)
+	// SetDelete sets the function to use for handling incoming delete requests.
 	SetDelete(f ResweaveFunc)
+	// SetUpdate sets the function to use for handling incoming update requests.
 	SetUpdate(f ResweaveFunc)
+	// SetID sets the regex for validating / parsing IDs for this resource.
 	SetID(id ID) error
+	// SetHandler sets the handler function for this resource.
 	SetHandler(handler HandlerFunction)
+	// GetIDValue retrieves the ID value from the provided context for this call.
 	GetIDValue(ctx context.Context) (string, error)
+	// AddSubResource adds a sub-resource which does not depend on any particular instantiated resource instance.
+	//   For example, /users/search would allow the creation of searches across all users, but does not depend on any particular resource instantiations.
+	//
+	// Should the sub-resource need to access a particular resource instance, it MUST be added via AddInstancedSubResource.
+	AddSubResource(Resource) error
+	// AddInstancedSubResource adds a sub-resource which depends on a particular instantiated resource instance.
+	//   For example:
+	//     * `/users/<id>/profile` could allow the viewing or editing of a particular users profile.
+	//     * `/users/<id>/emails` could allow the creation, viewing or editing of a particular users email(s).
+	//     * `/users/<id>/emails/foo%40bar.com` could allow the deletion of a particular users `foo@bar.com` e-mail.
+	AddInstancedSubResource(Resource) error
 }
 
 // BaseAPIRes supplies the basic building blocks for an APIResource.
 // It may be used through composition
 type BaseAPIRes struct {
 	LogHolder
-	name      ResourceName
-	actionMap actionFuncMap
-	id        ID
-	handler   HandlerFunction
+	name                  ResourceName
+	actionMap             actionFuncMap
+	id                    ID
+	handler               HandlerFunction
+	subResources          ResourceMap
+	instancedSubResources ResourceMap
 }
 
 // NewAPI creates a new APIResource instance with the provided name.
 func NewAPI(name ResourceName) APIResource {
-	bar := &BaseAPIRes{name: name, LogHolder: NewLogholder(name.String(), nil), actionMap: make(actionFuncMap)}
-	bar.SetHandler(nil)
+	bar := &BaseAPIRes{
+		name:                  name,
+		LogHolder:             NewLogholder(name.String(), nil),
+		actionMap:             make(actionFuncMap),
+		subResources:          make(ResourceMap),
+		instancedSubResources: make(ResourceMap),
+		id:                    NumericID,
+	}
+	bar.SetHandler(bar.defaultHandler)
 	return bar
 }
 
@@ -165,47 +198,73 @@ func (bar *BaseAPIRes) unknownResource(_ context.Context, w http.ResponseWriter,
 	w.WriteHeader(http.StatusNotFound)
 }
 
-func (bar *BaseAPIRes) storeID(c context.Context, req *http.Request) (context.Context, error) {
+func (bar *BaseAPIRes) popSegmentPaths(ctx context.Context, idSegment int) (context.Context, []ResourceName) {
+	uriSegments := ctx.Value(KeyURISegments).([]ResourceName)
+	// housekeeping: If the last segment is empty, remove it.
+	if len(uriSegments) > 0 && uriSegments[len(uriSegments)-1] == "" {
+		uriSegments = uriSegments[:len(uriSegments)-1]
+	}
+	if idSegment < 0 {
+		return ctx, uriSegments
+	}
+	if len(uriSegments) <= idSegment {
+		return context.WithValue(ctx, KeyURISegments, []ResourceName{}), []ResourceName{}
+	}
+	uriSegments = uriSegments[(idSegment + 1):]
+	return context.WithValue(ctx, KeyURISegments, uriSegments), uriSegments
+}
+
+func (bar *BaseAPIRes) storeID(c context.Context, req *http.Request) (context.Context, int, error) {
 	const curMethod = "storeID"
-	uriSegments := strings.Split(req.URL.Path, "/")
+	uriSegments, ok := c.Value(KeyURISegments).([]ResourceName)
+	if !ok {
+		return c, -1, errors.New("URI segments not found")
+	}
 	bar.Infow(curMethod, "Request URI", req.RequestURI, "Segment Count", len(uriSegments))
 
 	ctx := c
-	uriSeg := -1
+	resourceNameIdx := -1
+	idSegmentIdx := -1
 	var idVal string = ""
 
 	for i, v := range uriSegments {
-		if uriSeg >= 0 {
-			idVal = v
+		if resourceNameIdx >= 0 {
+			idSegmentIdx = i
+			idVal = string(v)
 			break
 		}
-		if v == bar.Name().String() {
-			uriSeg = i
+		if v == bar.Name() {
+			resourceNameIdx = i
 		}
 	}
 
 	bar.Infow(curMethod, "Segments", uriSegments, "idVal", idVal, "len(idVal)", len(idVal))
 
 	if len(idVal) == 0 {
-		return context.WithValue(ctx, Key(fmt.Sprintf(keyPathHasSubSegment, bar.name.String())), false), nil
+		return context.WithValue(ctx, Key(fmt.Sprintf(keyPathHasSubSegment, bar.name.String())), false), 0, nil
 	}
 	ctx = context.WithValue(ctx, Key(fmt.Sprintf(keyPathHasSubSegment, bar.name.String())), true)
 	v, found := bar.id.Find(idVal)
 	bar.Infow(curMethod, "idVal", idVal, "found", found, "v", v)
 	if !found {
-		// If the resource can't be found we have a problem; basically, a resource was specified but it's not valid
-		// so we need to respond with an error.
-		return ctx, ErrIDNotFound
+		// By allowing non-instanced sub-resources, it is now valid to have /resource/sub-resource as well as /resource/<id>/sub-resource.
+		// This is a change from the original implementation, where only /resource/<id>/sub-resource was allowed.
+		return ctx, resourceNameIdx, nil
 	}
 
 	ctx = context.WithValue(ctx, Key(fmt.Sprintf("id_%s", bar.name.String())), v)
-	return ctx, nil
+	return ctx, idSegmentIdx, nil
+}
+
+func (bar *BaseAPIRes) hasID(ctx context.Context) bool {
+	_, err := bar.GetIDValue(ctx)
+	return err == nil
 }
 
 func (bar *BaseAPIRes) whichAction(ctx context.Context, httpMethod string) ActionType {
 	switch httpMethod {
 	case http.MethodGet:
-		if _, err := bar.GetIDValue(ctx); err == nil {
+		if bar.hasID(ctx) {
 			return Fetch
 		}
 		return List
@@ -228,11 +287,39 @@ func (bar *BaseAPIRes) SetHandler(handler HandlerFunction) {
 	bar.handler = handler
 }
 
+func (bar *BaseAPIRes) findSubResource(c context.Context, w http.ResponseWriter, req *http.Request) (Resource, error) {
+	segments := c.Value(KeyURISegments).([]ResourceName)
+	if len(segments) == 0 {
+		// TODO: should this just return bar?
+		return nil, errors.New("no segments found")
+	}
+	if !bar.hasID(c) {
+		if res, found := bar.subResources[segments[0]]; found {
+			return res, nil
+		}
+		return nil, errors.New("no sub-resource found")
+	}
+	if res, found := bar.instancedSubResources[segments[0]]; found {
+		return res, nil
+	}
+	return nil, errors.New("no instanced sub-resource found")
+}
+
 func (bar *BaseAPIRes) HandleCall(c context.Context, w http.ResponseWriter, req *http.Request) {
-	ctx, err := bar.storeID(c, req)
+	ctx, idSegment, err := bar.storeID(c, req)
 	if err != nil {
 		bar.unknownResource(ctx, w, req)
 		return
+	}
+	ctx, segments := bar.popSegmentPaths(ctx, idSegment)
+	if len(segments) > 0 {
+		// Not at the lowest level resource need to keep going.
+		if res, err := bar.findSubResource(ctx, w, req); err != nil {
+			bar.unknownResource(ctx, w, req)
+		} else {
+			res.HandleCall(ctx, w, req)
+			return
+		}
 	}
 	at := bar.whichAction(ctx, req.Method)
 	if at == unknown {
@@ -253,4 +340,34 @@ func (bar *BaseAPIRes) defaultHandler(at ActionType, c context.Context, w http.R
 		}
 	}
 	fun(c, w, req)
+}
+
+func (bar *BaseAPIRes) AddSubResource(r Resource) error {
+	if r == nil {
+		bar.Infow("AddSubResource", "Error", "resource was nil")
+		return ErrNilResource
+	}
+
+	if _, found := bar.subResources[r.Name()]; found {
+		bar.Infow("AddSubResource", "Name", r.Name(), "Exists?", found)
+		return fmt.Errorf(fmtResourceAlreadyExists, ErrResourceAlreadyExists, r.Name(), bar.Name())
+	}
+	bar.subResources[r.Name()] = r
+	bar.Infow("AddSubResource", "Name", fmt.Sprintf("'%s'", r.Name()), "Added", true)
+	return nil
+}
+
+func (bar *BaseAPIRes) AddInstancedSubResource(r Resource) error {
+	if r == nil {
+		bar.Infow("AddInstancedSubResource", "Error", "resource was nil")
+		return errors.New("cannot add a nil resource")
+	}
+
+	if _, found := bar.instancedSubResources[r.Name()]; found {
+		bar.Infow("AddInstancedSubResource", "Name", r.Name(), "Exists?", found)
+		return fmt.Errorf(fmtInstancedResourceAlreadyExists, ErrInstancedResourceAlreadyExists, r.Name(), bar.Name())
+	}
+	bar.instancedSubResources[r.Name()] = r
+	bar.Infow("AddInstancedSubResource", "Name", fmt.Sprintf("'%s'", r.Name()), "Added", true)
+	return nil
 }
