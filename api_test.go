@@ -39,7 +39,7 @@ var _ = Describe("Api", func() {
 			func(method string, path string, ctx context.Context) {
 				req, err := http.NewRequest(method, path, nil)
 				Expect(err).ToNot(HaveOccurred())
-				_, _ = resultsMatch(http.StatusMethodNotAllowed, ctx, res, req)
+				_, _ = verifyStatusGetBody(http.StatusMethodNotAllowed, ctx, res, req)
 			},
 			Entry("GET", http.MethodGet, "/", contextWithURISegments([]string{})),
 			Entry("POST", http.MethodPost, "/", contextWithURISegments([]string{})),
@@ -124,7 +124,7 @@ var _ = Describe("Api", func() {
 			respData, err := io.ReadAll(response.Body)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(string(respData)).To(Equal(expContents))
-			respData, err = resultsMatch(http.StatusMethodNotAllowed, contextWithURISegments([]string{}), res, req2)
+			respData, err = verifyStatusGetBody(http.StatusMethodNotAllowed, contextWithURISegments([]string{}), res, req2)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(string(respData)).To(Equal(""))
 		})
@@ -150,10 +150,10 @@ var _ = Describe("Api", func() {
 			Expect(err).ToNot(HaveOccurred())
 			req2, err := http.NewRequest(http.MethodGet, "/", nil)
 			Expect(err).ToNot(HaveOccurred())
-			respData, err := resultsMatch(http.StatusCreated, contextWithURISegments([]string{}), res, req)
+			respData, err := verifyStatusGetBody(http.StatusCreated, contextWithURISegments([]string{}), res, req)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(string(respData)).To(Equal(expContents))
-			respData, err = resultsMatch(http.StatusMethodNotAllowed, contextWithURISegments([]string{}), res, req2)
+			respData, err = verifyStatusGetBody(http.StatusMethodNotAllowed, contextWithURISegments([]string{}), res, req2)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(string(respData)).To(Equal(""))
 		})
@@ -177,7 +177,7 @@ var _ = Describe("Api", func() {
 				})
 				req, err := http.NewRequest(method, path, nil)
 				Expect(err).ToNot(HaveOccurred())
-				_, _ = resultsMatch(expStatus, ctx, res, req)
+				_, _ = verifyStatusGetBody(expStatus, ctx, res, req)
 			},
 			Entry("LIST", http.MethodGet, "/", contextWithURISegments([]string{}), http.StatusOK),
 			Entry("FETCH", http.MethodGet, "/21/", contextWithURISegments(strings.Split("/21/", "/")), http.StatusTeapot),
@@ -212,7 +212,7 @@ var _ = Describe("Api", func() {
 				res.SetDelete(nil)
 				req, err := http.NewRequest(method, path, nil)
 				Expect(err).ToNot(HaveOccurred())
-				_, _ = resultsMatch(expStatus, ctx, res, req)
+				_, _ = verifyStatusGetBody(expStatus, ctx, res, req)
 
 			},
 			Entry("LIST", http.MethodGet, "/", contextWithURISegments([]string{}), http.StatusMethodNotAllowed),
@@ -260,7 +260,7 @@ var _ = Describe("Api", func() {
 				res.SetLogger(logger, true)
 				req, err := http.NewRequest(method, path, nil)
 				Expect(err).ToNot(HaveOccurred())
-				_, _ = resultsMatch(expStatus, ctx, res, req)
+				_, _ = verifyStatusGetBody(expStatus, ctx, res, req)
 			},
 			Entry("LIST", http.MethodGet, "users/", contextWithURISegments(strings.Split("users/", "/")), http.StatusAccepted),
 			Entry("FETCH /<id>", http.MethodGet, "users/1", contextWithURISegments(strings.Split("users/1", "/")), http.StatusNoContent),
@@ -320,52 +320,52 @@ var _ = Describe("Api", func() {
 		}
 	})
 
-	var _ = Describe("AddSubResource", func() {
+	var _ = Describe("AddResource", func() {
 		It("should be possible to add a sub-resource", func() {
 			res := resweave.NewAPI("foo")
 			subRes := resweave.NewAPI("bar")
-			err := res.AddSubResource(subRes)
+			err := res.AddResource(subRes)
 			Expect(err).ToNot(HaveOccurred())
 		})
 		It("should error if the sub-resource is nil", func() {
 			res := resweave.NewAPI("foo")
-			err := res.AddSubResource(nil)
+			err := res.AddResource(nil)
 			Expect(err).To(MatchError(resweave.ErrNilResource))
 		})
 		It("should error if the sub-resource is already added", func() {
 			res := resweave.NewAPI("foo")
 			subRes := resweave.NewAPI("bar")
-			err := res.AddSubResource(subRes)
+			err := res.AddResource(subRes)
 			Expect(err).ToNot(HaveOccurred())
-			err = res.AddSubResource(subRes)
+			err = res.AddResource(subRes)
 			Expect(err).To(MatchError(resweave.ErrResourceAlreadyExists))
 		})
 	})
 
-	var _ = Describe("AddInstancedSubResource", func() {
+	var _ = Describe("AddChildResource", func() {
 		It("should be possible to add a sub-resource", func() {
 			res := resweave.NewAPI("foo")
 			subRes := resweave.NewAPI("bar")
-			err := res.AddInstancedSubResource(subRes)
+			err := res.AddChildResource(subRes)
 			Expect(err).ToNot(HaveOccurred())
 		})
 		It("should error if the sub-resource is nil", func() {
 			res := resweave.NewAPI("foo")
-			err := res.AddInstancedSubResource(nil)
+			err := res.AddChildResource(nil)
 			Expect(err).To(MatchError(resweave.ErrNilResource))
 		})
 		It("should error if the sub-resource is already added", func() {
 			res := resweave.NewAPI("foo")
 			subRes := resweave.NewAPI("bar")
-			err := res.AddInstancedSubResource(subRes)
+			err := res.AddChildResource(subRes)
 			Expect(err).ToNot(HaveOccurred())
-			err = res.AddInstancedSubResource(subRes)
+			err = res.AddChildResource(subRes)
 			Expect(err).To(MatchError(resweave.ErrInstancedResourceAlreadyExists))
 		})
 	})
 })
 
-func resultsMatch(expStatusCode int, inputContext context.Context, res resweave.Resource, req *http.Request) ([]byte, error) {
+func verifyStatusGetBody(expStatusCode int, inputContext context.Context, res resweave.Resource, req *http.Request) ([]byte, error) {
 	recorder := httptest.NewRecorder()
 	res.HandleCall(inputContext, recorder, req)
 	response := recorder.Result()

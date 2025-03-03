@@ -99,40 +99,40 @@ type APIResource interface {
 	SetHandler(handler HandlerFunction)
 	// GetIDValue retrieves the ID value from the provided context for this call.
 	GetIDValue(ctx context.Context) (string, error)
-	// AddSubResource adds a sub-resource which does not depend on any particular instantiated resource instance.
+	// AddResource adds a sub-resource which does not depend on any particular instantiated resource instance.
 	//   For example, /users/search would allow the creation of searches across all users, but does not depend on any particular resource instantiations.
 	//
-	// Should the sub-resource need to access a particular resource instance, it MUST be added via AddInstancedSubResource.
-	AddSubResource(Resource) error
-	// AddInstancedSubResource adds a sub-resource which depends on a particular instantiated resource instance.
+	// Should the sub-resource need to access a particular resource instance, it MUST be added via AddChildResource.
+	AddResource(Resource) error
+	// AddChildResource adds a sub-resource which depends on a particular instantiated resource instance.
 	//   For example:
 	//     * `/users/<id>/profile` could allow the viewing or editing of a particular users profile.
 	//     * `/users/<id>/emails` could allow the creation, viewing or editing of a particular users email(s).
 	//     * `/users/<id>/emails/foo%40bar.com` could allow the deletion of a particular users `foo@bar.com` e-mail.
-	AddInstancedSubResource(Resource) error
+	AddChildResource(Resource) error
 }
 
 // BaseAPIRes supplies the basic building blocks for an APIResource.
 // It may be used through composition
 type BaseAPIRes struct {
 	LogHolder
-	name                  ResourceName
-	actionMap             actionFuncMap
-	id                    ID
-	handler               HandlerFunction
-	subResources          ResourceMap
-	instancedSubResources ResourceMap
+	name           ResourceName
+	actionMap      actionFuncMap
+	id             ID
+	handler        HandlerFunction
+	resources      ResourceMap
+	childResources ResourceMap
 }
 
 // NewAPI creates a new APIResource instance with the provided name.
 func NewAPI(name ResourceName) APIResource {
 	bar := &BaseAPIRes{
-		name:                  name,
-		LogHolder:             NewLogholder(name.String(), nil),
-		actionMap:             make(actionFuncMap),
-		subResources:          make(ResourceMap),
-		instancedSubResources: make(ResourceMap),
-		id:                    NumericID,
+		name:           name,
+		LogHolder:      NewLogholder(name.String(), nil),
+		actionMap:      make(actionFuncMap),
+		resources:      make(ResourceMap),
+		childResources: make(ResourceMap),
+		id:             NumericID,
 	}
 	bar.SetHandler(bar.defaultHandler)
 	return bar
@@ -147,7 +147,11 @@ func (bar *BaseAPIRes) defaultFunction(_ context.Context, w http.ResponseWriter,
 }
 
 func (bar *BaseAPIRes) GetIDValue(ctx context.Context) (string, error) {
-	key := Key(fmt.Sprintf("id_%s", bar.Name().String()))
+	return bar.GetResourceID(ctx, bar.name)
+}
+
+func (bar *BaseAPIRes) GetResourceID(ctx context.Context, name ResourceName) (string, error) {
+	key := Key(fmt.Sprintf("id_%s", name.String()))
 	v := ctx.Value(key)
 	var idStr string
 	var ok bool
@@ -290,16 +294,15 @@ func (bar *BaseAPIRes) SetHandler(handler HandlerFunction) {
 func (bar *BaseAPIRes) findSubResource(c context.Context, w http.ResponseWriter, req *http.Request) (Resource, error) {
 	segments := c.Value(KeyURISegments).([]ResourceName)
 	if len(segments) == 0 {
-		// TODO: should this just return bar?
 		return nil, errors.New("no segments found")
 	}
 	if !bar.hasID(c) {
-		if res, found := bar.subResources[segments[0]]; found {
+		if res, found := bar.resources[segments[0]]; found {
 			return res, nil
 		}
 		return nil, errors.New("no sub-resource found")
 	}
-	if res, found := bar.instancedSubResources[segments[0]]; found {
+	if res, found := bar.childResources[segments[0]]; found {
 		return res, nil
 	}
 	return nil, errors.New("no instanced sub-resource found")
@@ -342,32 +345,32 @@ func (bar *BaseAPIRes) defaultHandler(at ActionType, c context.Context, w http.R
 	fun(c, w, req)
 }
 
-func (bar *BaseAPIRes) AddSubResource(r Resource) error {
+func (bar *BaseAPIRes) AddResource(r Resource) error {
 	if r == nil {
-		bar.Infow("AddSubResource", "Error", "resource was nil")
+		bar.Infow("AddResource", "Error", "resource was nil")
 		return ErrNilResource
 	}
 
-	if _, found := bar.subResources[r.Name()]; found {
-		bar.Infow("AddSubResource", "Name", r.Name(), "Exists?", found)
+	if _, found := bar.resources[r.Name()]; found {
+		bar.Infow("AddResource", "Name", r.Name(), "Exists?", found)
 		return fmt.Errorf(fmtResourceAlreadyExists, ErrResourceAlreadyExists, r.Name(), bar.Name())
 	}
-	bar.subResources[r.Name()] = r
-	bar.Infow("AddSubResource", "Name", fmt.Sprintf("'%s'", r.Name()), "Added", true)
+	bar.resources[r.Name()] = r
+	bar.Infow("AddResource", "Name", fmt.Sprintf("'%s'", r.Name()), "Added", true)
 	return nil
 }
 
-func (bar *BaseAPIRes) AddInstancedSubResource(r Resource) error {
+func (bar *BaseAPIRes) AddChildResource(r Resource) error {
 	if r == nil {
-		bar.Infow("AddInstancedSubResource", "Error", "resource was nil")
+		bar.Infow("AddChildResource", "Error", "resource was nil")
 		return errors.New("cannot add a nil resource")
 	}
 
-	if _, found := bar.instancedSubResources[r.Name()]; found {
-		bar.Infow("AddInstancedSubResource", "Name", r.Name(), "Exists?", found)
+	if _, found := bar.childResources[r.Name()]; found {
+		bar.Infow("AddChildResource", "Name", r.Name(), "Exists?", found)
 		return fmt.Errorf(fmtInstancedResourceAlreadyExists, ErrInstancedResourceAlreadyExists, r.Name(), bar.Name())
 	}
-	bar.instancedSubResources[r.Name()] = r
-	bar.Infow("AddInstancedSubResource", "Name", fmt.Sprintf("'%s'", r.Name()), "Added", true)
+	bar.childResources[r.Name()] = r
+	bar.Infow("AddChildResource", "Name", fmt.Sprintf("'%s'", r.Name()), "Added", true)
 	return nil
 }

@@ -46,7 +46,7 @@ var _ = Describe("Host", func() {
 			res := NewAPI(segments[1])
 			res.SetID(`id-[0-9]+`)
 			subRes := NewAPI(segments[3])
-			res.AddInstancedSubResource(subRes)
+			res.AddChildResource(subRes)
 			Expect(caHost.AddResource(res)).ToNot(HaveOccurred())
 			handlerCalled := false
 			subRes.SetHandler(func(_ ActionType, ctx context.Context, w http.ResponseWriter, _ *http.Request) {
@@ -68,8 +68,8 @@ var _ = Describe("Host", func() {
 			resources := NewAPI(segments[1])
 			resources.SetID(`id-[0-9]+`)
 			subRes := NewAPI(segments[3])
-			resources.AddInstancedSubResource(subRes)
-			res.AddSubResource(resources)
+			resources.AddChildResource(subRes)
+			res.AddResource(resources)
 			Expect(caHost.AddResource(res)).ToNot(HaveOccurred())
 			handlerCalled := false
 			subRes.SetHandler(func(_ ActionType, ctx context.Context, w http.ResponseWriter, _ *http.Request) {
@@ -85,6 +85,36 @@ var _ = Describe("Host", func() {
 			caHost.Serve(httptest.NewRecorder(), req)
 			Expect(handlerCalled).To(BeTrue())
 
+		})
+		It("should be able to handle several levels of direction", func() {
+			path := "/users/123/posts/456/comments/789/replies"
+			segments := ResourceNames(strings.Split(path, "/"))
+			usersRes := NewAPI(segments[1])
+			usersRes.SetID(NumericID)
+			postsRes := NewAPI(segments[3])
+			postsRes.SetID(NumericID)
+			commentsRes := NewAPI(segments[5])
+			commentsRes.SetID(NumericID)
+			repliesRes := NewAPI(segments[7])
+			usersRes.AddChildResource(postsRes)
+			postsRes.AddChildResource(commentsRes)
+			commentsRes.AddChildResource(repliesRes)
+			caHost.AddResource(usersRes)
+
+			handlerCalled := false
+			repliesRes.SetHandler(func(_ ActionType, ctx context.Context, w http.ResponseWriter, _ *http.Request) {
+				handlerCalled = true
+				actSegs, valid := ctx.Value(KeyURISegments).([]ResourceName)
+				Expect(valid).To(BeTrue())
+				Expect(actSegs).To(Equal([]ResourceName{}))
+				Expect(ctx.Value(Key(fmt.Sprintf("id_%s", usersRes.Name())))).To(Equal("123"))
+				Expect(ctx.Value(Key(fmt.Sprintf("id_%s", postsRes.Name())))).To(Equal("456"))
+				Expect(ctx.Value(Key(fmt.Sprintf("id_%s", commentsRes.Name())))).To(Equal("789"))
+				Expect(ctx.Value(Key(fmt.Sprintf("id_%s", repliesRes.Name())))).To(BeNil())
+			})
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			caHost.Serve(httptest.NewRecorder(), req)
+			Expect(handlerCalled).To(BeTrue())
 		})
 		It("should store an empty path segments slice if no segments exist", func() {
 			path := "/"

@@ -43,7 +43,7 @@ func main() {
 			logger.Errorw("Main", "Write Error", err, "Bytes Written", bw)
 		}
 	})
-	if err := helloResource.AddSubResource(translateResource); err != nil {
+	if err := helloResource.AddResource(translateResource); err != nil {
 		fmt.Println(err.Error())
 		panic(err)
 	}
