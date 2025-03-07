@@ -81,18 +81,18 @@ func (h *host) GetResource(name ResourceName) (res Resource, found bool) {
 
 func (h *host) Serve(w http.ResponseWriter, req *http.Request) {
 	h.Infow("serve", "Host Name", h.Name(), "Request URI", req.RequestURI)
-	pathSegs := strings.Split(req.URL.Path, "/")
-	reqPaths := ResourceNames(pathSegs)
+	var reqPaths []ResourceName
+	if strings.HasSuffix(req.URL.Path, "/") {
+		reqPaths = ResourceNames(strings.Split(req.URL.Path[:len(req.URL.Path)-1], "/"))
+	} else {
+		reqPaths = ResourceNames(strings.Split(req.URL.Path, "/"))
+	}
 	ctx := req.Context()
 	pathIdx := 0
 	leadSlash := false
 	if strings.HasPrefix(req.URL.Path, "/") {
 		pathIdx = 1
 		leadSlash = true
-	}
-	// Remove the trailing slash segment if it exists
-	if strings.HasSuffix(req.URL.Path, "/") {
-		reqPaths = reqPaths[:len(reqPaths)-1]
 	}
 
 	if pathIdx >= len(reqPaths) {

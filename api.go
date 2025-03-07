@@ -45,10 +45,10 @@ const (
 )
 
 var (
-	ErrIDNotFound                     = errors.New("no ID found")
-	ErrNilResource                    = errors.New("cannot add a nil resource")
-	ErrResourceAlreadyExists          = errors.New("sub-resource already exists")
-	ErrInstancedResourceAlreadyExists = errors.New("instanced sub-resource already exists")
+	ErrIDNotFound                 = errors.New("no ID found")
+	ErrNilResource                = errors.New("cannot add a nil resource")
+	ErrResourceAlreadyExists      = errors.New("sub-resource already exists")
+	ErrChildResourceAlreadyExists = errors.New("child sub-resource already exists")
 )
 
 func (at ActionType) String() string {
@@ -368,7 +368,7 @@ func (bar *BaseAPIRes) AddChildResource(r Resource) error {
 
 	if _, found := bar.childResources[r.Name()]; found {
 		bar.Infow("AddChildResource", "Name", r.Name(), "Exists?", found)
-		return fmt.Errorf(fmtInstancedResourceAlreadyExists, ErrInstancedResourceAlreadyExists, r.Name(), bar.Name())
+		return fmt.Errorf(fmtInstancedResourceAlreadyExists, ErrChildResourceAlreadyExists, r.Name(), bar.Name())
 	}
 	bar.childResources[r.Name()] = r
 	bar.Infow("AddChildResource", "Name", fmt.Sprintf("'%s'", r.Name()), "Added", true)
