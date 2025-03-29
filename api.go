@@ -48,7 +48,7 @@ var (
 	ErrIDNotFound                 = errors.New("no ID found")
 	ErrNilResource                = errors.New("cannot add a nil resource")
 	ErrResourceAlreadyExists      = errors.New("sub-resource already exists")
-	ErrChildResourceAlreadyExists = errors.New("child sub-resource already exists")
+	ErrChildResourceAlreadyExists = errors.New("child already exists")
 )
 
 func (at ActionType) String() string {
