@@ -1,6 +1,7 @@
 package resweave
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -80,16 +81,34 @@ func (h *host) GetResource(name ResourceName) (res Resource, found bool) {
 
 func (h *host) Serve(w http.ResponseWriter, req *http.Request) {
 	h.Infow("serve", "Host Name", h.Name(), "Request URI", req.RequestURI)
-	pathSegs := strings.Split(req.URL.Path, "/")[1:]
-	reqPaths := ResourceNames(pathSegs)
+	var reqPaths []ResourceName
+	if strings.HasSuffix(req.URL.Path, "/") {
+		reqPaths = ResourceNames(strings.Split(req.URL.Path[:len(req.URL.Path)-1], "/"))
+	} else {
+		reqPaths = ResourceNames(strings.Split(req.URL.Path, "/"))
+	}
 	ctx := req.Context()
+	pathIdx := 0
+	leadSlash := false
+	if strings.HasPrefix(req.URL.Path, "/") {
+		pathIdx = 1
+		leadSlash = true
+	}
 
-	res, found := h.GetResource(reqPaths[0])
-	h.Infow("serve", "Request Path:", reqPaths[0], "Found?", found)
+	if pathIdx >= len(reqPaths) {
+		pathIdx = 0
+	}
+	res, found := h.GetResource(reqPaths[pathIdx])
+	h.Infow("serve", "Request Path:", reqPaths[pathIdx], "Found?", found)
 	if !found {
+		pathIdx = 0
+		if !leadSlash {
+			reqPaths = append(ResourceNames([]string{""}), reqPaths...)
+		}
 		res, found = h.GetResource(ResourceName(""))
 	}
 	if found {
+		ctx = context.WithValue(ctx, KeyURISegments, reqPaths[pathIdx:])
 		res.HandleCall(ctx, w, req)
 		return
 	}

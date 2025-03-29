@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -35,6 +36,100 @@ var _ = Describe("Host", func() {
 		})
 		It("should have a nil logger eventually", func() {
 			Expect(caHost.Logger()).To(BeNil())
+		})
+	})
+	Describe("Serving Basics", func() {
+		It("should receive all ids in instanced sub-resources", func() {
+			path := "/resource/id-123/other"
+			segments := ResourceNames(strings.Split(path, "/"))
+			// split sets the first elment to an empty string if the path starts with a slash
+			res := NewAPI(segments[1])
+			res.SetID(`id-[0-9]+`)
+			subRes := NewAPI(segments[3])
+			res.AddChildResource(subRes)
+			Expect(caHost.AddResource(res)).ToNot(HaveOccurred())
+			handlerCalled := false
+			subRes.SetHandler(func(_ ActionType, ctx context.Context, w http.ResponseWriter, _ *http.Request) {
+				handlerCalled = true
+				actSegs, valid := ctx.Value(KeyURISegments).([]ResourceName)
+				Expect(valid).To(BeTrue())
+				Expect(actSegs).To(Equal([]ResourceName{}))
+				Expect(ctx.Value(Key(fmt.Sprintf("id_%s", res.Name())))).To(Equal("id-123"))
+				Expect(ctx.Value(Key(fmt.Sprintf("id_%s", subRes.Name())))).To(BeNil())
+			})
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			caHost.Serve(httptest.NewRecorder(), req)
+			Expect(handlerCalled).To(BeTrue())
+		})
+		It("should store the path segments from idx 0 if the resource is not found", func() {
+			path := "/resource/id-123/other"
+			segments := ResourceNames(strings.Split(path, "/"))
+			res := NewAPI("")
+			resources := NewAPI(segments[1])
+			resources.SetID(`id-[0-9]+`)
+			subRes := NewAPI(segments[3])
+			resources.AddChildResource(subRes)
+			res.AddResource(resources)
+			Expect(caHost.AddResource(res)).ToNot(HaveOccurred())
+			handlerCalled := false
+			subRes.SetHandler(func(_ ActionType, ctx context.Context, w http.ResponseWriter, _ *http.Request) {
+				handlerCalled = true
+				actSegs, valid := ctx.Value(KeyURISegments).([]ResourceName)
+				Expect(valid).To(BeTrue())
+				Expect(actSegs).To(Equal([]ResourceName{}))
+				Expect(ctx.Value(Key(fmt.Sprintf("id_%s", res.Name())))).To(BeNil())
+				Expect(ctx.Value(Key(fmt.Sprintf("id_%s", resources.Name())))).To(Equal("id-123"))
+				Expect(ctx.Value(Key(fmt.Sprintf("id_%s", subRes.Name())))).To(BeNil())
+			})
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			caHost.Serve(httptest.NewRecorder(), req)
+			Expect(handlerCalled).To(BeTrue())
+
+		})
+		It("should be able to handle several levels of direction", func() {
+			path := "/users/123/posts/456/comments/789/replies"
+			segments := ResourceNames(strings.Split(path, "/"))
+			usersRes := NewAPI(segments[1])
+			usersRes.SetID(NumericID)
+			postsRes := NewAPI(segments[3])
+			postsRes.SetID(NumericID)
+			commentsRes := NewAPI(segments[5])
+			commentsRes.SetID(NumericID)
+			repliesRes := NewAPI(segments[7])
+			usersRes.AddChildResource(postsRes)
+			postsRes.AddChildResource(commentsRes)
+			commentsRes.AddChildResource(repliesRes)
+			caHost.AddResource(usersRes)
+
+			handlerCalled := false
+			repliesRes.SetHandler(func(_ ActionType, ctx context.Context, w http.ResponseWriter, _ *http.Request) {
+				handlerCalled = true
+				actSegs, valid := ctx.Value(KeyURISegments).([]ResourceName)
+				Expect(valid).To(BeTrue())
+				Expect(actSegs).To(Equal([]ResourceName{}))
+				Expect(ctx.Value(Key(fmt.Sprintf("id_%s", usersRes.Name())))).To(Equal("123"))
+				Expect(ctx.Value(Key(fmt.Sprintf("id_%s", postsRes.Name())))).To(Equal("456"))
+				Expect(ctx.Value(Key(fmt.Sprintf("id_%s", commentsRes.Name())))).To(Equal("789"))
+				Expect(ctx.Value(Key(fmt.Sprintf("id_%s", repliesRes.Name())))).To(BeNil())
+			})
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			caHost.Serve(httptest.NewRecorder(), req)
+			Expect(handlerCalled).To(BeTrue())
+		})
+		It("should store an empty path segments slice if no segments exist", func() {
+			path := "/"
+			res := NewAPI("")
+			Expect(caHost.AddResource(res)).ToNot(HaveOccurred())
+			handlerCalled := false
+			res.SetHandler(func(_ ActionType, ctx context.Context, w http.ResponseWriter, _ *http.Request) {
+				handlerCalled = true
+				actSegs, valid := ctx.Value(KeyURISegments).([]ResourceName)
+				Expect(valid).To(BeTrue())
+				Expect(actSegs).To(Equal([]ResourceName{}))
+			})
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			caHost.Serve(httptest.NewRecorder(), req)
+			Expect(handlerCalled).To(BeTrue())
 		})
 	})
 	Describe("API Usage", func() {
