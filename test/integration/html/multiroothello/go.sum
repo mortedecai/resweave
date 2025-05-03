@@ -10,8 +10,6 @@ github.com/google/pprof v0.0.0-20241029153458-d1b30febd7db h1:097atOisP2aRj7vFgY
 github.com/google/pprof v0.0.0-20241029153458-d1b30febd7db/go.mod h1:vavhavw2zAxS5dIdcRluK6cSGGPlZynqzFM8NdvU144=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
 github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
-github.com/mortedecai/resweave v0.0.1 h1:0UnU2Zk6P3CJZRewRPpUObXCoK+pjXmT83PUnSJZd58=
-github.com/mortedecai/resweave v0.0.1/go.mod h1:tiefX5+BIH18J35QkDRJaW+uoAIkWe3ZSSyrNgFiX/0=
 github.com/mortedecai/resweave v0.0.4-0.20250210022623-8c60769939ef h1:WF5F0zb4r0E/1FctJv5XYt8mbPhzRSDq5iyTuII/qTY=
 github.com/mortedecai/resweave v0.0.4-0.20250210022623-8c60769939ef/go.mod h1:3n3deOc1nzzOzE8xCBgqcwvbCtDujdOcobaJ2sgQprg=
 github.com/onsi/ginkgo/v2 v2.22.0 h1:Yed107/8DjTr0lKCNt7Dn8yQ6ybuDRQoMGrNFKzMfHg=
