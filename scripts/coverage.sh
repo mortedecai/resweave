@@ -38,13 +38,13 @@ generate_coverage_file() {
       mkdir -p ${REPORTS_DIR}
   fi
 
-  echo "Coverage profile location: ${REPORTS_DIR}/coverage.out"
-  generate_coverage "--coverprofile=${REPORTS_DIR}/coverage.out"
+  echo "Coverage profile location: ${REPORTS_DIR}/coverage.lcov"
+  generate_coverage "--coverprofile=${REPORTS_DIR}/coverage.lcov"
 }
 
 generate_coverage_report() {
   local TYPE=$1
-  go tool cover -${TYPE}=${REPORTS_DIR}/coverage.out -o ${REPORTS_DIR}/coverage.html
+  go tool cover -${TYPE}=${REPORTS_DIR}/coverage.lcov -o ${REPORTS_DIR}/coverage.html
 }
 
 coverage_lcov() {
