@@ -1,6 +1,6 @@
 module github.com/mortedecai/resweave/test/integration/api/hello
 
-go 1.23
+go 1.24
 
 require (
 	github.com/mortedecai/go-go-gadgets v0.2.2

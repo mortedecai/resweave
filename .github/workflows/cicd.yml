@@ -15,7 +15,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@v3
         with:
-          go-version: "^1.23"
+          go-version: "^1.24"
 
       - name: Set PR Version Tag
         run: |
@@ -30,7 +30,7 @@ jobs:
         uses: dominikh/staticcheck-action@v1.3.0
         with:
           # TODO(keithpaterson): figure out why we must use "latest" version to avoid an error here
-          version: "2024.1"
+          version: "2025.1"
           install-go: false
 
       - name: Run Gosec Security Scanner

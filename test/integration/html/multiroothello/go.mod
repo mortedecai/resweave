@@ -1,6 +1,6 @@
 module github.com/mortedecai/resweave/test/integration/html/multiroothello
 
-go 1.23
+go 1.24
 
 require (
 	github.com/mortedecai/resweave v0.0.4-0.20250210022623-8c60769939ef
