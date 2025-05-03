@@ -4,7 +4,7 @@ go 1.23
 
 require (
 	github.com/mortedecai/go-go-gadgets v0.2.2
-	github.com/mortedecai/resweave v0.0.4-0.20250210022623-8c60769939ef
+	github.com/mortedecai/resweave v0.0.4
 	github.com/onsi/ginkgo/v2 v2.22.0
 	github.com/onsi/gomega v1.36.0
 	go.uber.org/zap v1.27.0
