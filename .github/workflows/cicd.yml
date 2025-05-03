@@ -89,7 +89,7 @@ jobs:
             -Dsonar.tests=.
             -Dsonar.test.exclusions=**/vendor/**
             -Dsonar.test.inclusions=**/*_test.go
-            -Dsonar.go.coverage.reportPaths=.reports/coverage.out
+            -Dsonar.go.coverage.reportPaths=.reports/coverage.lcov
             -Dsonar.go.tests.reportPaths=.reports/test.json
 
       - name: Archive Code Reports
