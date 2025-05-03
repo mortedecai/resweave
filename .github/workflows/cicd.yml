@@ -1,7 +1,7 @@
 name: Resweave CI/CD Build
 on:
   push:
-    tag:
+    tags:
       - "v[0-9]+.[0-9]+.[0-9]+" # (mortedecai): Intentionally only run on tag pushes for full versions not alphas.
   pull_request:
     types: [opened, synchronize, reopened]
