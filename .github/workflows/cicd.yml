@@ -27,10 +27,8 @@ jobs:
 
       - run: ./project coverage
       - name: Static Check
-        uses: dominikh/staticcheck-action@v1.3.0
+        uses: dominikh/staticcheck-action@v1.3.1
         with:
-          # TODO(keithpaterson): figure out why we must use "latest" version to avoid an error here
-          version: "2025.1"
           install-go: false
 
       - name: Run Gosec Security Scanner
