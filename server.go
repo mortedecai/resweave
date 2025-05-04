@@ -41,8 +41,6 @@ type Server interface {
 	// AddInterceptor adds a new interceptor at the start of the handling chain.
 	// For example, on an incoming request, _next_ will be called first, with any current interceptors being
 	AddInterceptor(func(next http.Handler) http.Handler)
-	// Serve the http response for an incoming request
-	serve(w http.ResponseWriter, req *http.Request)
 }
 
 const (
