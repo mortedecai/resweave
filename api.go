@@ -99,6 +99,8 @@ type APIResource interface {
 	SetHandler(handler HandlerFunction)
 	// GetIDValue retrieves the ID value from the provided context for this call.
 	GetIDValue(ctx context.Context) (string, error)
+	// GetResourceID retrieves the ID value for a resource with the provided name from the context.
+	GetResourceID(ctx context.Context, name ResourceName) (string, error)
 	// AddResource adds a sub-resource which does not depend on any particular instantiated resource instance.
 	//   For example, /users/search would allow the creation of searches across all users, but does not depend on any particular resource instantiations.
 	//
