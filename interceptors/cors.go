@@ -1,55 +1,53 @@
 package interceptors
 
 import (
-	"errors"
 	"net/http"
 	"strings"
 )
 
-type CORSOption func(optVal string) func(w *http.ResponseWriter) *http.ResponseWriter
+type CORSOption func(w *http.ResponseWriter) *http.ResponseWriter
 
-func WithOrigin(corsHost string) func(w *http.ResponseWriter) *http.ResponseWriter {
+func WithOrigin(corsHost string) CORSOption {
 	return func(w *http.ResponseWriter) *http.ResponseWriter {
 		(*w).Header().Set("Access-Control-Allow-Origin", corsHost)
 		return w
 	}
 }
 
-func WithMethods(methods string) func(w *http.ResponseWriter) *http.ResponseWriter {
+func WithMethods(methods ...string) CORSOption {
 	return func(w *http.ResponseWriter) *http.ResponseWriter {
-		(*w).Header().Set("Access-Control-Allow-Methods", methods)
+		(*w).Header().Set("Access-Control-Allow-Methods", strings.Join(methods, ","))
 		return w
 	}
 }
 
-func WithHeaders(headers string) func(w *http.ResponseWriter) *http.ResponseWriter {
+func WithHeaders(headers ...string) CORSOption {
 	return func(w *http.ResponseWriter) *http.ResponseWriter {
-		(*w).Header().Set("Access-Control-Allow-Headers", headers)
+		(*w).Header().Set("Access-Control-Allow-Headers", strings.Join(headers, ","))
 		return w
 	}
 }
 
-func AllowCredentials(allowCreds string) func(w *http.ResponseWriter) *http.ResponseWriter {
+func AllowCredentials(allowCreds string) CORSOption {
 	return func(w *http.ResponseWriter) *http.ResponseWriter {
 		(*w).Header().Set("Access-Control-Allow-Credentials", allowCreds)
 		return w
 	}
 }
 
-func WithMaxAge(maxAge string) func(w *http.ResponseWriter) *http.ResponseWriter {
+func WithMaxAge(maxAge string) CORSOption {
 	return func(w *http.ResponseWriter) *http.ResponseWriter {
 		(*w).Header().Set("Access-Control-Max-Age", maxAge)
 		return w
 	}
 }
 
-func NewCORS(next http.Handler, corsHost string) (http.Handler, error) {
-	if strings.TrimSpace(corsHost) == "" {
-		return nil, errors.New("cors host is empty")
-	}
+func NewCORS(next http.Handler, opts ...CORSOption) (http.Handler, error) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		wp := &w
-		(*wp).Header().Set("Access-Control-Allow-Origin", corsHost)
+		for _, opt := range opts {
+			opt(wp)
+		}
 		next.ServeHTTP(*wp, r)
 	}), nil
 }
