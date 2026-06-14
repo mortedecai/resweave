@@ -3,6 +3,8 @@ package interceptors
 import (
 	"net/http"
 	"strings"
+
+	"github.com/mortedecai/resweave"
 )
 
 type CORSOption func(w *http.ResponseWriter) *http.ResponseWriter
@@ -42,12 +44,14 @@ func WithMaxAge(maxAge string) CORSOption {
 	}
 }
 
-func NewCORS(next http.Handler, opts ...CORSOption) (http.Handler, error) {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		wp := &w
-		for _, opt := range opts {
-			opt(wp)
-		}
-		next.ServeHTTP(*wp, r)
-	}), nil
+func NewCORS(opts ...CORSOption) (resweave.Interceptor, error) {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			wp := &w
+			for _, opt := range opts {
+				opt(wp)
+			}
+			next.ServeHTTP(*wp, r)
+		})
+	}, nil
 }

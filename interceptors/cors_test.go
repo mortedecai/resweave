@@ -18,31 +18,33 @@ var _ = Describe("Cors", func() {
 			next = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 		})
 
-		It("returns a non-nil handler without error", func() {
-			handler, err := interceptors.NewCORS(next)
+		It("returns a non-nil interceptor without error", func() {
+			interceptor, err := interceptors.NewCORS()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(handler).ToNot(BeNil())
+			Expect(interceptor).ToNot(BeNil())
 		})
 
 		It("calls the next handler", func() {
 			called := false
-			handler, err := interceptors.NewCORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				called = true
-			}))
+			interceptor, err := interceptors.NewCORS()
 			Expect(err).ToNot(HaveOccurred())
 
+			handler := interceptor(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				called = true
+			}))
 			handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
 
 			Expect(called).To(BeTrue())
 		})
 
 		It("applies provided options on each request", func() {
-			handler, err := interceptors.NewCORS(next,
+			interceptor, err := interceptors.NewCORS(
 				interceptors.WithOrigin("https://example.com"),
 				interceptors.WithMethods("GET", "POST"),
 			)
 			Expect(err).ToNot(HaveOccurred())
 
+			handler := interceptor(next)
 			for i := 0; i < 3; i++ {
 				recorder := httptest.NewRecorder()
 				handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/", nil))
