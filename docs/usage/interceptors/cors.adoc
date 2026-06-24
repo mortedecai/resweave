@@ -1,0 +1,145 @@
+= CORS Interceptor
+:toc:
+:toc-placement!:
+:source-highlighter: highlight.js
+
+toc::[]
+
+== Overview
+
+The `interceptors` sub-package ships a CORS (Cross-Origin Resource Sharing) interceptor that handles preflight requests and attaches the appropriate response headers to actual requests.
+
+Import path:
+
+[source,go]
+----
+import "github.com/mortedecai/resweave/interceptors"
+----
+
+== Creating the Interceptor
+
+[source,go]
+----
+cors, err := interceptors.NewCORS(
+    interceptors.WithOrigin("https://app.example.com"),
+    interceptors.WithMethods("GET", "POST", "PUT", "DELETE"),
+    interceptors.WithHeaders("Content-Type", "Authorization"),
+    interceptors.AllowCredentials("true"),
+    interceptors.WithMaxAge("3600"),
+)
+if err != nil {
+    log.Fatal(err)
+}
+server.AddInterceptor(cors)
+----
+
+`NewCORS` always returns a non-nil `resweave.Interceptor` and a `nil` error (the signature reserves the error for future validation).
+
+== Options
+
+[cols="2,3"]
+|===
+|Option |Description
+
+|`WithOrigin(origin string)`
+|Sets `Access-Control-Allow-Origin` and adds `Vary: Origin` to the response.
+
+|`WithMethods(methods ...string)`
+|Sets `Access-Control-Allow-Methods` (comma-joined) on preflight responses.
+
+|`WithHeaders(headers ...string)`
+|Sets `Access-Control-Allow-Headers` (comma-joined) on preflight responses.
+
+|`AllowCredentials(value string)`
+|Sets `Access-Control-Allow-Credentials` (typically `"true"` or `"false"`).
+
+|`WithMaxAge(seconds string)`
+|Sets `Access-Control-Max-Age`, telling browsers how long to cache the preflight result.
+|===
+
+== Preflight Handling
+
+When the incoming HTTP method is `OPTIONS`, the interceptor:
+
+1. Applies all configured CORS headers to the response.
+2. Responds with `204 No Content`.
+3. Does **not** call the next handler — the request goes no further.
+
+For all other methods, `Access-Control-Allow-Methods`, `Access-Control-Allow-Headers`, and `Access-Control-Max-Age` are stripped from the response before passing the request downstream. Only `Access-Control-Allow-Origin` (and `Vary: Origin`) remain on non-preflight responses.
+
+== Security Note
+
+Because the CORS interceptor short-circuits `OPTIONS` requests before reaching downstream handlers, any authentication or authorization middleware placed _after_ `AddInterceptor(cors)` will **not** run for preflight requests. This is standard CORS behavior — browsers do not send credentials on preflight.
+
+If you have authentication middleware, add it to the server _before_ adding the CORS interceptor so that it runs first in the chain:
+
+[source,go]
+----
+// auth runs first; CORS wraps the outside
+server.AddInterceptor(authMiddleware)
+server.AddInterceptor(cors)
+----
+
+== Allowing All Origins
+
+To permit any origin (useful during development):
+
+[source,go]
+----
+cors, _ := interceptors.NewCORS(
+    interceptors.WithOrigin("*"),
+    interceptors.WithMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"),
+    interceptors.WithHeaders("Content-Type"),
+)
+server.AddInterceptor(cors)
+----
+
+WARNING: Using `*` for origin with `AllowCredentials("true")` is rejected by browsers. Use a specific origin when credentials are required.
+
+== Full Example
+
+[source,go]
+----
+package main
+
+import (
+    "context"
+    "fmt"
+    "net/http"
+
+    "github.com/mortedecai/resweave"
+    "github.com/mortedecai/resweave/interceptors"
+    "go.uber.org/zap"
+)
+
+func main() {
+    server := resweave.NewServer(8080)
+
+    if l, err := zap.NewDevelopment(); err == nil {
+        server.SetLogger(l.Sugar(), true)
+    }
+
+    // Add the API resource
+    api := resweave.NewAPI("data")
+    api.SetList(func(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+        w.Header().Set("Content-Type", "application/json")
+        w.Write([]byte(`{"ok":true}`))
+    })
+    server.AddResource(api)
+
+    // Attach CORS interceptor
+    cors, err := interceptors.NewCORS(
+        interceptors.WithOrigin("https://frontend.example.com"),
+        interceptors.WithMethods("GET", "POST", "PUT", "DELETE"),
+        interceptors.WithHeaders("Content-Type", "Authorization"),
+        interceptors.WithMaxAge("600"),
+    )
+    if err != nil {
+        fmt.Println(err)
+        return
+    }
+    server.AddInterceptor(cors)
+
+    fmt.Println(server.Run())
+}
+----

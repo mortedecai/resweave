@@ -1,0 +1,97 @@
+= HTML Resources
+:toc:
+:toc-placement!:
+:source-highlighter: highlight.js
+
+toc::[]
+
+== Overview
+
+`HTMLResource` is a static file server backed by Go's `http.FileServer`. It maps a URL prefix to a directory on disk and handles the rest of the path automatically.
+
+== Creating an HTML Resource
+
+[source,go]
+----
+import "github.com/mortedecai/resweave"
+
+html := resweave.NewHTML(name, baseDir)
+----
+
+[cols="1,3"]
+|===
+|Parameter |Description
+
+|`name`
+|`ResourceName` — the URL prefix for this resource. Use `""` to serve at `/`.
+
+|`baseDir`
+|Path to the directory containing the files to serve.
+|===
+
+== Serving at the Root
+
+Pass an empty string as the name to serve files directly from `/`:
+
+[source,go]
+----
+// GET /         → ./public/index.html
+// GET /style.css → ./public/style.css
+html := resweave.NewHTML("", "./public")
+server.AddResource(html)
+----
+
+== Serving Under a Path Prefix
+
+Give the resource a name to nest it under a URL prefix:
+
+[source,go]
+----
+// GET /static/logo.png → ./assets/logo.png
+html := resweave.NewHTML("static", "./assets")
+server.AddResource(html)
+----
+
+The full URL prefix (including the leading slash) can be inspected via `FullPath()`:
+
+[source,go]
+----
+fmt.Println(html.FullPath()) // "/static/"
+----
+
+== Full Example
+
+[source,go]
+----
+package main
+
+import (
+    "fmt"
+
+    "github.com/mortedecai/resweave"
+    "go.uber.org/zap"
+)
+
+func main() {
+    server := resweave.NewServer(8080)
+
+    if l, err := zap.NewDevelopment(); err == nil {
+        server.SetLogger(l.Sugar(), true)
+    }
+
+    // Serve everything in ./web at /
+    html := resweave.NewHTML("", "./web")
+    if err := server.AddResource(html); err != nil {
+        fmt.Println(err)
+        return
+    }
+
+    fmt.Println(server.Run())
+}
+----
+
+== Limitations
+
+* `HTMLResource` only supports FETCH semantics — it does not handle POST, PUT, PATCH, or DELETE.
+* It cannot have sub-resources.
+* If `baseDir` does not exist when a request arrives, the handler returns `500 Internal Server Error`.
