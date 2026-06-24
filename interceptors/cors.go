@@ -12,6 +12,7 @@ type CORSOption func(w *http.ResponseWriter) *http.ResponseWriter
 func WithOrigin(corsHost string) CORSOption {
 	return func(w *http.ResponseWriter) *http.ResponseWriter {
 		(*w).Header().Set("Access-Control-Allow-Origin", corsHost)
+		(*w).Header().Add("Vary", "Origin")
 		return w
 	}
 }
@@ -49,8 +50,17 @@ func NewCORS(opts ...CORSOption) (resweave.Interceptor, error) {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			wp := &w
 			for _, opt := range opts {
-				opt(wp)
+				wp = opt(wp)
 			}
+			if r.Method == http.MethodOptions {
+				// Preflight responses are completed here and never reach next.
+				// Any auth middleware downstream is bypassed; place it upstream of this interceptor.
+				(*wp).WriteHeader(http.StatusNoContent)
+				return
+			}
+			(*wp).Header().Del("Access-Control-Allow-Methods")
+			(*wp).Header().Del("Access-Control-Allow-Headers")
+			(*wp).Header().Del("Access-Control-Max-Age")
 			next.ServeHTTP(*wp, r)
 		})
 	}, nil

@@ -24,7 +24,7 @@ var _ = Describe("Cors", func() {
 			Expect(interceptor).ToNot(BeNil())
 		})
 
-		It("calls the next handler", func() {
+		It("calls the next handler for non-OPTIONS requests", func() {
 			called := false
 			interceptor, err := interceptors.NewCORS()
 			Expect(err).ToNot(HaveOccurred())
@@ -37,7 +37,37 @@ var _ = Describe("Cors", func() {
 			Expect(called).To(BeTrue())
 		})
 
-		It("applies provided options on each request", func() {
+		It("responds 204 and does not call next for OPTIONS requests", func() {
+			called := false
+			interceptor, err := interceptors.NewCORS()
+			Expect(err).ToNot(HaveOccurred())
+
+			handler := interceptor(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				called = true
+			}))
+			recorder := httptest.NewRecorder()
+			handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodOptions, "/", nil))
+
+			Expect(recorder.Code).To(Equal(http.StatusNoContent))
+			Expect(called).To(BeFalse())
+		})
+
+		It("applies CORS headers on OPTIONS preflight requests", func() {
+			interceptor, err := interceptors.NewCORS(
+				interceptors.WithOrigin("https://example.com"),
+				interceptors.WithMethods("GET", "POST"),
+			)
+			Expect(err).ToNot(HaveOccurred())
+
+			recorder := httptest.NewRecorder()
+			interceptor(next).ServeHTTP(recorder, httptest.NewRequest(http.MethodOptions, "/", nil))
+
+			Expect(recorder.Code).To(Equal(http.StatusNoContent))
+			Expect(recorder.Header().Get("Access-Control-Allow-Origin")).To(Equal("https://example.com"))
+			Expect(recorder.Header().Get("Access-Control-Allow-Methods")).To(Equal("GET,POST"))
+		})
+
+		It("applies simple CORS headers on non-OPTIONS requests", func() {
 			interceptor, err := interceptors.NewCORS(
 				interceptors.WithOrigin("https://example.com"),
 				interceptors.WithMethods("GET", "POST"),
@@ -49,8 +79,24 @@ var _ = Describe("Cors", func() {
 				recorder := httptest.NewRecorder()
 				handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/", nil))
 				Expect(recorder.Header().Get("Access-Control-Allow-Origin")).To(Equal("https://example.com"))
-				Expect(recorder.Header().Get("Access-Control-Allow-Methods")).To(Equal("GET,POST"))
+				Expect(recorder.Header().Get("Access-Control-Allow-Methods")).To(BeEmpty())
 			}
+		})
+
+		It("strips preflight-only headers from non-OPTIONS responses", func() {
+			interceptor, err := interceptors.NewCORS(
+				interceptors.WithMethods("GET", "POST"),
+				interceptors.WithHeaders("Content-Type"),
+				interceptors.WithMaxAge("3600"),
+			)
+			Expect(err).ToNot(HaveOccurred())
+
+			recorder := httptest.NewRecorder()
+			interceptor(next).ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/", nil))
+
+			Expect(recorder.Header().Get("Access-Control-Allow-Methods")).To(BeEmpty())
+			Expect(recorder.Header().Get("Access-Control-Allow-Headers")).To(BeEmpty())
+			Expect(recorder.Header().Get("Access-Control-Max-Age")).To(BeEmpty())
 		})
 	})
 
@@ -69,6 +115,11 @@ var _ = Describe("Cors", func() {
 			It("sets Access-Control-Allow-Origin", func() {
 				interceptors.WithOrigin("https://example.com")(&w)
 				Expect(recorder.Header().Get("Access-Control-Allow-Origin")).To(Equal("https://example.com"))
+			})
+
+			It("sets Vary: Origin", func() {
+				interceptors.WithOrigin("https://example.com")(&w)
+				Expect(recorder.Header().Get("Vary")).To(Equal("Origin"))
 			})
 
 			It("returns a CORSOption", func() {
