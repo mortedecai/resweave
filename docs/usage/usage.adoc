@@ -1,0 +1,103 @@
+= Resweave Usage Guide
+:toc:
+:toc-placement!:
+:source-highlighter: highlight.js
+
+toc::[]
+
+== Overview
+
+Resweave is an opinionated, resource-based web server framework for Go. Rather than defining routes manually, you describe _resources_ — named entities with optional CRUD operations — and Resweave builds the URL structure for you.
+
+[quote]
+Let developers worry about coding, not routing.
+
+Key concepts:
+
+* **Resources** are the building blocks. A resource named `users` automatically handles `/users` (and `/users/<id>` when an ID pattern is configured).
+* **Actions** map HTTP methods to operations: LIST, CREATE, FETCH, UPDATE, DELETE.
+* **Interceptors** are middleware functions that wrap the request handler chain.
+* **Hosts** allow a single server to route different hostnames to different resource trees.
+
+== Quick Start
+
+Add resweave to your module:
+
+[source,sh]
+----
+go get github.com/mortedecai/resweave
+----
+
+=== Minimal API Server
+
+[source,go]
+----
+package main
+
+import (
+    "context"
+    "fmt"
+    "net/http"
+
+    "github.com/mortedecai/resweave"
+    "go.uber.org/zap"
+)
+
+func main() {
+    server := resweave.NewServer(8080)
+
+    if l, err := zap.NewDevelopment(); err == nil {
+        server.SetLogger(l.Sugar(), true)
+    }
+
+    greetings := resweave.NewAPI("greetings")
+    greetings.SetList(func(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+        w.Write([]byte(`["Hello","Bonjour","Hola"]`))
+    })
+
+    if err := server.AddResource(greetings); err != nil {
+        fmt.Println(err)
+        return
+    }
+    fmt.Println(server.Run())
+}
+----
+
+This serves `GET /greetings` and returns `405 Method Not Allowed` for any operation that has not been implemented.
+
+=== Minimal HTML Server
+
+[source,go]
+----
+package main
+
+import (
+    "fmt"
+
+    "github.com/mortedecai/resweave"
+    "go.uber.org/zap"
+)
+
+func main() {
+    server := resweave.NewServer(8080)
+
+    if l, err := zap.NewDevelopment(); err == nil {
+        server.SetLogger(l.Sugar(), true)
+    }
+
+    // Serves files from ./public at /
+    html := resweave.NewHTML("", "./public")
+    if err := server.AddResource(html); err != nil {
+        fmt.Println(err)
+        return
+    }
+    fmt.Println(server.Run())
+}
+----
+
+== Documentation
+
+* xref:server.adoc[Server] — creating a server, logging, multi-host routing, and running
+* xref:resources/api-resource.adoc[API Resources] — CRUD operations, ID patterns, sub-resources
+* xref:resources/html-resource.adoc[HTML Resources] — static file serving
+* xref:interceptors/cors.adoc[CORS Interceptor] — cross-origin request handling

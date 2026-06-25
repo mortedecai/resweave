@@ -11,6 +11,8 @@ import (
 	"go.uber.org/zap"
 )
 
+type Interceptor func(http.Handler) http.Handler
+
 // Server is the resweave implementation of an opinionated resource server.
 // Outside of a path prefix, the full path of a resource is determined by the resource names alone.
 // This means that to have a path `v1/api/users/<id>/profile`, you will require a `v1/api` path prefix and two resources:
@@ -40,7 +42,7 @@ type Server interface {
 	SetLogger(logger *zap.SugaredLogger, recursive bool)
 	// AddInterceptor adds a new interceptor at the start of the handling chain.
 	// For example, on an incoming request, _next_ will be called first, with any current interceptors being
-	AddInterceptor(func(next http.Handler) http.Handler)
+	AddInterceptor(Interceptor)
 }
 
 const (
@@ -137,7 +139,7 @@ func (s *server) GetHost(name HostName) (h Host, f bool) {
 	return
 }
 
-func (s *server) AddInterceptor(f func(next http.Handler) http.Handler) {
+func (s *server) AddInterceptor(f Interceptor) {
 	s.interceptor = f(s.interceptor)
 }
 

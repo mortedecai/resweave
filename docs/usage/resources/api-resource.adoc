@@ -1,0 +1,392 @@
+= API Resources
+:toc:
+:toc-placement!:
+:source-highlighter: highlight.js
+
+toc::[]
+
+== Overview
+
+`APIResource` is the primary building block for REST-style endpoints. A single resource can expose up to five operations — LIST, CREATE, FETCH, UPDATE, DELETE — each mapped to a standard HTTP method. Any operation that has not been implemented returns `405 Method Not Allowed` by default.
+
+== Creating a Resource
+
+[source,go]
+----
+import "github.com/mortedecai/resweave"
+
+books := resweave.NewAPI("books")
+----
+
+The name becomes the URL segment: a resource named `books` is served at `/books`.
+
+== Implementing Operations
+
+Each operation is set with a `ResweaveFunc`:
+
+[source,go]
+----
+type ResweaveFunc func(ctx context.Context, w http.ResponseWriter, req *http.Request)
+----
+
+=== LIST — `GET /books`
+
+[source,go]
+----
+books.SetList(func(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+    w.Header().Set("Content-Type", "application/json")
+    w.Write([]byte(`[{"id":1,"title":"Go Programming"}]`))
+})
+----
+
+=== CREATE — `POST /books`
+
+[source,go]
+----
+books.SetCreate(func(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+    body, _ := io.ReadAll(req.Body)
+    // persist body...
+    w.WriteHeader(http.StatusCreated)
+    w.Write(body)
+})
+----
+
+=== FETCH — `GET /books/<id>`
+
+[source,go]
+----
+books.SetFetch(func(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+    id, err := books.GetIDValue(ctx)
+    if err != nil {
+        w.WriteHeader(http.StatusInternalServerError)
+        return
+    }
+    // look up by id...
+    w.Write([]byte(`{"id":` + id + `,"title":"Go Programming"}`))
+})
+----
+
+=== UPDATE — `PUT /books/<id>` or `PATCH /books/<id>`
+
+Both `PUT` and `PATCH` are routed to the same Update handler. Inspect `req.Method` inside the handler if you need to distinguish them.
+
+[source,go]
+----
+books.SetUpdate(func(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+    id, _ := books.GetIDValue(ctx)
+    switch req.Method {
+    case http.MethodPut:
+        // full replace for id
+    case http.MethodPatch:
+        // partial update for id
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+})
+----
+
+=== DELETE — `DELETE /books/<id>`
+
+[source,go]
+----
+books.SetDelete(func(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+    id, _ := books.GetIDValue(ctx)
+    // remove record with id...
+    w.WriteHeader(http.StatusNoContent)
+})
+----
+
+== HTTP Method to Action Mapping
+
+[cols="1,1,2"]
+|===
+|HTTP Method |Condition |Action
+
+|`GET`
+|No ID in path
+|LIST
+
+|`GET`
+|ID present in path
+|FETCH
+
+|`POST`
+|(any)
+|CREATE
+
+|`PUT` or `PATCH`
+|(any)
+|UPDATE
+
+|`DELETE`
+|(any)
+|DELETE
+|===
+
+== ID Patterns
+
+To enable instance-level operations (FETCH, UPDATE, DELETE), tell the resource what an ID looks like:
+
+[source,go]
+----
+// Built-in: matches one or more digits
+books.SetID(resweave.NumericID)   // ([0-9]+)
+
+// Built-in: matches a UUIDv7 string
+orders.SetID(resweave.UUIDv7)
+
+// Custom regex
+products.SetID(resweave.ID(`[A-Z]{3}-[0-9]{4}`))
+----
+
+`SetID` returns an error if the regex does not compile.
+
+Once an ID pattern is set, the URL segment immediately after the resource name is matched against it. On a match the value is stored in the request context and the appropriate action (FETCH / UPDATE / DELETE) is dispatched.
+
+=== Reading the ID in a Handler
+
+[source,go]
+----
+// Using GetIDValue — returns the ID for *this* resource
+id, err := books.GetIDValue(ctx)
+
+// Using GetResourceID — returns the ID for a named ancestor resource
+// (useful inside a child resource handler)
+userID, err := profile.GetResourceID(ctx, resweave.ResourceName("users"))
+----
+
+Both methods return `(string, error)`. The error is `resweave.ErrIDNotFound` when no matching ID is in the context.
+
+The raw context key follows the pattern `id_<resourceName>` if you need to access it directly:
+
+[source,go]
+----
+key := resweave.Key(fmt.Sprintf("id_%s", books.Name().String()))
+val, _ := ctx.Value(key).(string)
+----
+
+== Sub-Resources
+
+Sub-resources extend a resource's URL space. There are two kinds:
+
+=== Non-Instanced Sub-Resources (`AddResource`)
+
+Use when the sub-resource does not depend on a particular parent instance. For example, `/books/search` searches across all books.
+
+[source,go]
+----
+search := resweave.NewAPI("search")
+search.SetList(func(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+    q := req.URL.Query().Get("q")
+    // search all books for q...
+})
+books.AddResource(search)
+----
+
+Routes created:
+
+* `GET /books` → books LIST
+* `GET /books/search` → search LIST
+* `GET /books/<id>` → books FETCH
+
+=== Instanced Child Resources (`AddChildResource`)
+
+Use when the sub-resource depends on a specific parent instance. For example, `/books/<id>/reviews` lists reviews for a particular book.
+
+[source,go]
+----
+reviews := resweave.NewAPI("reviews")
+reviews.SetList(func(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+    bookID, _ := reviews.GetResourceID(ctx, "books")
+    // fetch reviews for bookID...
+})
+books.AddChildResource(reviews)
+----
+
+Routes created:
+
+* `GET /books/<id>/reviews` → reviews LIST
+* `GET /books/<id>/reviews/<reviewId>` → reviews FETCH (if reviews also has `SetID` configured)
+
+IMPORTANT: `AddChildResource` requires that the parent resource has `SetID` configured. The child is only reachable when an ID is present in the path.
+
+== Embedding APIResource
+
+For complex resources, embed `resweave.APIResource` in a struct rather than using a bare `*BaseAPIRes`. This lets you attach state (database handles, caches, etc.) without closures.
+
+[source,go]
+----
+type BookResource struct {
+    resweave.APIResource
+    db *sql.DB
+}
+
+func NewBookResource(db *sql.DB) (*BookResource, error) {
+    r := &BookResource{
+        APIResource: resweave.NewAPI("books"),
+        db:          db,
+    }
+    r.SetList(r.list)
+    r.SetCreate(r.create)
+    r.SetID(resweave.NumericID)
+    r.SetFetch(r.fetch)
+    r.SetUpdate(r.update)
+    r.SetDelete(r.delete)
+    return r, nil
+}
+
+func (r *BookResource) list(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+    // r.db is available here
+}
+----
+
+== Custom Handler
+
+By default, `SetList`/`SetCreate`/… register individual per-action functions. You can instead replace the entire dispatch logic with `SetHandler`:
+
+[source,go]
+----
+books.SetHandler(func(action resweave.ActionType, ctx context.Context, w http.ResponseWriter, req *http.Request) {
+    switch action {
+    case resweave.List:
+        // ...
+    case resweave.Fetch:
+        // ...
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+})
+----
+
+Pass `nil` to revert to the default per-action dispatch.
+
+== Adding Resources to the Server
+
+Once configured, add the resource to the server (or to a host):
+
+[source,go]
+----
+if err := server.AddResource(books); err != nil {
+    log.Fatal(err)
+}
+----
+
+== Full CRUD Example
+
+[source,go]
+----
+package main
+
+import (
+    "context"
+    "encoding/json"
+    "fmt"
+    "io"
+    "net/http"
+    "sync"
+
+    "github.com/mortedecai/resweave"
+    "go.uber.org/zap"
+)
+
+type Item struct {
+    ID   *int   `json:"id,omitempty"`
+    Name string `json:"name"`
+}
+
+type ItemResource struct {
+    resweave.APIResource
+    items  []Item
+    nextID int
+    mu     sync.Mutex
+}
+
+func newItemResource() *ItemResource {
+    r := &ItemResource{APIResource: resweave.NewAPI("items")}
+    r.SetList(r.list)
+    r.SetCreate(r.create)
+    r.SetID(resweave.NumericID)
+    r.SetFetch(r.fetch)
+    r.SetDelete(r.delete)
+    return r
+}
+
+func (r *ItemResource) list(_ context.Context, w http.ResponseWriter, _ *http.Request) {
+    r.mu.Lock()
+    defer r.mu.Unlock()
+    data, _ := json.Marshal(r.items)
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+    w.Write(data)
+}
+
+func (r *ItemResource) create(_ context.Context, w http.ResponseWriter, req *http.Request) {
+    var item Item
+    body, _ := io.ReadAll(req.Body)
+    if err := json.Unmarshal(body, &item); err != nil {
+        w.WriteHeader(http.StatusBadRequest)
+        return
+    }
+    r.mu.Lock()
+    defer r.mu.Unlock()
+    id := r.nextID
+    r.nextID++
+    item.ID = &id
+    r.items = append(r.items, item)
+    data, _ := json.Marshal(item)
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusCreated)
+    w.Write(data)
+}
+
+func (r *ItemResource) fetch(ctx context.Context, w http.ResponseWriter, _ *http.Request) {
+    idStr, err := r.GetIDValue(ctx)
+    if err != nil {
+        w.WriteHeader(http.StatusInternalServerError)
+        return
+    }
+    r.mu.Lock()
+    defer r.mu.Unlock()
+    for _, item := range r.items {
+        if fmt.Sprint(*item.ID) == idStr {
+            data, _ := json.Marshal(item)
+            w.Header().Set("Content-Type", "application/json")
+            w.WriteHeader(http.StatusOK)
+            w.Write(data)
+            return
+        }
+    }
+    w.WriteHeader(http.StatusNotFound)
+}
+
+func (r *ItemResource) delete(ctx context.Context, w http.ResponseWriter, _ *http.Request) {
+    idStr, err := r.GetIDValue(ctx)
+    if err != nil {
+        w.WriteHeader(http.StatusInternalServerError)
+        return
+    }
+    r.mu.Lock()
+    defer r.mu.Unlock()
+    for i, item := range r.items {
+        if fmt.Sprint(*item.ID) == idStr {
+            r.items[i] = r.items[len(r.items)-1]
+            r.items = r.items[:len(r.items)-1]
+            w.WriteHeader(http.StatusNoContent)
+            return
+        }
+    }
+    w.WriteHeader(http.StatusNotFound)
+}
+
+func main() {
+    server := resweave.NewServer(8080)
+    if l, err := zap.NewDevelopment(); err == nil {
+        server.SetLogger(l.Sugar(), true)
+    }
+    if err := server.AddResource(newItemResource()); err != nil {
+        fmt.Println(err)
+        return
+    }
+    fmt.Println(server.Run())
+}
+----

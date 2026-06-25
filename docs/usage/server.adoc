@@ -1,0 +1,136 @@
+= Server
+:toc:
+:toc-placement!:
+:source-highlighter: highlight.js
+
+toc::[]
+
+== Creating a Server
+
+`resweave.NewServer` returns a `Server` ready to accept resources and interceptors.
+
+[source,go]
+----
+server := resweave.NewServer(8080)
+----
+
+The port can be read back at any time:
+
+[source,go]
+----
+fmt.Println(server.Port()) // 8080
+----
+
+== Logging
+
+Resweave uses https://pkg.go.dev/go.uber.org/zap[Uber zap] for structured logging. Pass a `*zap.SugaredLogger` to `SetLogger`. The second argument controls whether the logger is propagated recursively to all hosts and resources already attached to the server.
+
+[source,go]
+----
+l, err := zap.NewDevelopment()
+if err != nil {
+    log.Fatal(err)
+}
+server.SetLogger(l.Sugar(), true)
+----
+
+Pass `nil` to disable logging:
+
+[source,go]
+----
+server.SetLogger(nil, true)
+----
+
+NOTE: Logging is disabled by default. Without a logger, all `Infow`/`Debugw`/`Errorw` calls on the server and its resources are no-ops.
+
+== Adding Resources
+
+Resources are added with `AddResource`. The server places them on the _default host_ (matched when no named host matches the incoming `Host` header).
+
+[source,go]
+----
+resource := resweave.NewAPI("books")
+if err := server.AddResource(resource); err != nil {
+    log.Fatal(err)
+}
+----
+
+Possible errors:
+
+* `resweave.ErrNilResource` — the resource argument was `nil`.
+* `resweave.ErrResourceAlreadyExists` — a resource with the same name already exists at this level.
+
+== Multi-Host Routing
+
+When a single server must serve different resource trees for different hostnames, use `AddHost`.
+
+[source,go]
+----
+apiHost, err := server.AddHost(resweave.HostName("api.example.com"))
+if err != nil {
+    log.Fatal(err)
+}
+apiHost.AddResource(resweave.NewAPI("v1"))
+
+webHost, err := server.AddHost(resweave.HostName("www.example.com"))
+if err != nil {
+    log.Fatal(err)
+}
+webHost.AddResource(resweave.NewHTML("", "./public"))
+----
+
+Requests whose `Host` header does not match any named host are served by the default host (resources added directly via `server.AddResource`).
+
+Retrieve an existing host with `GetHost`:
+
+[source,go]
+----
+if h, ok := server.GetHost("api.example.com"); ok {
+    h.AddResource(anotherResource)
+}
+----
+
+== Interceptors
+
+Interceptors are middleware functions of type `func(http.Handler) http.Handler`. They wrap the entire request chain.
+
+[source,go]
+----
+type Interceptor func(http.Handler) http.Handler
+----
+
+Add interceptors with `AddInterceptor`. Each call prepends the new interceptor in front of the previous chain, so the last interceptor added runs first on an incoming request.
+
+[source,go]
+----
+server.AddInterceptor(loggingMiddleware)
+server.AddInterceptor(authMiddleware) // runs before loggingMiddleware
+----
+
+Resweave ships with a CORS interceptor in the `interceptors` sub-package. See xref:interceptors/cors.adoc[CORS Interceptor] for details.
+
+== Request IDs
+
+Every request is assigned a unique UUID v4 before it reaches any resource. It is stored in the request context under the key `resweave.KeyRequestID` and can be retrieved like this:
+
+[source,go]
+----
+func myHandler(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+    if id, ok := ctx.Value(resweave.KeyRequestID).(string); ok {
+        fmt.Println("request id:", id)
+    }
+}
+----
+
+== Running the Server
+
+`Run` starts the HTTP server and blocks until it returns an error:
+
+[source,go]
+----
+if err := server.Run(); err != nil {
+    log.Fatal(err)
+}
+----
+
+The server listens on the port provided to `NewServer` with a 3-second read-header timeout.

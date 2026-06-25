@@ -1,0 +1,215 @@
+package interceptors_test
+
+import (
+	"net/http"
+	"net/http/httptest"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+
+	"github.com/mortedecai/resweave/interceptors"
+)
+
+var _ = Describe("Cors", func() {
+	Describe("NewCORS", func() {
+		var next http.Handler
+
+		BeforeEach(func() {
+			next = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+		})
+
+		It("returns a non-nil interceptor without error", func() {
+			interceptor, err := interceptors.NewCORS()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(interceptor).ToNot(BeNil())
+		})
+
+		It("calls the next handler for non-OPTIONS requests", func() {
+			called := false
+			interceptor, err := interceptors.NewCORS()
+			Expect(err).ToNot(HaveOccurred())
+
+			handler := interceptor(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				called = true
+			}))
+			handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
+
+			Expect(called).To(BeTrue())
+		})
+
+		It("responds 204 and does not call next for OPTIONS requests", func() {
+			called := false
+			interceptor, err := interceptors.NewCORS()
+			Expect(err).ToNot(HaveOccurred())
+
+			handler := interceptor(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				called = true
+			}))
+			recorder := httptest.NewRecorder()
+			handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodOptions, "/", nil))
+
+			Expect(recorder.Code).To(Equal(http.StatusNoContent))
+			Expect(called).To(BeFalse())
+		})
+
+		It("applies CORS headers on OPTIONS preflight requests", func() {
+			interceptor, err := interceptors.NewCORS(
+				interceptors.WithOrigin("https://example.com"),
+				interceptors.WithMethods("GET", "POST"),
+			)
+			Expect(err).ToNot(HaveOccurred())
+
+			recorder := httptest.NewRecorder()
+			interceptor(next).ServeHTTP(recorder, httptest.NewRequest(http.MethodOptions, "/", nil))
+
+			Expect(recorder.Code).To(Equal(http.StatusNoContent))
+			Expect(recorder.Header().Get("Access-Control-Allow-Origin")).To(Equal("https://example.com"))
+			Expect(recorder.Header().Get("Access-Control-Allow-Methods")).To(Equal("GET,POST"))
+		})
+
+		It("applies simple CORS headers on non-OPTIONS requests", func() {
+			interceptor, err := interceptors.NewCORS(
+				interceptors.WithOrigin("https://example.com"),
+				interceptors.WithMethods("GET", "POST"),
+			)
+			Expect(err).ToNot(HaveOccurred())
+
+			handler := interceptor(next)
+			for i := 0; i < 3; i++ {
+				recorder := httptest.NewRecorder()
+				handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/", nil))
+				Expect(recorder.Header().Get("Access-Control-Allow-Origin")).To(Equal("https://example.com"))
+				Expect(recorder.Header().Get("Access-Control-Allow-Methods")).To(BeEmpty())
+			}
+		})
+
+		It("strips preflight-only headers from non-OPTIONS responses", func() {
+			interceptor, err := interceptors.NewCORS(
+				interceptors.WithMethods("GET", "POST"),
+				interceptors.WithHeaders("Content-Type"),
+				interceptors.WithMaxAge("3600"),
+			)
+			Expect(err).ToNot(HaveOccurred())
+
+			recorder := httptest.NewRecorder()
+			interceptor(next).ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/", nil))
+
+			Expect(recorder.Header().Get("Access-Control-Allow-Methods")).To(BeEmpty())
+			Expect(recorder.Header().Get("Access-Control-Allow-Headers")).To(BeEmpty())
+			Expect(recorder.Header().Get("Access-Control-Max-Age")).To(BeEmpty())
+		})
+	})
+
+	Describe("Options", func() {
+		var (
+			recorder *httptest.ResponseRecorder
+			w        http.ResponseWriter
+		)
+
+		BeforeEach(func() {
+			recorder = httptest.NewRecorder()
+			w = recorder
+		})
+
+		Describe("WithOrigin", func() {
+			It("sets Access-Control-Allow-Origin", func() {
+				interceptors.WithOrigin("https://example.com")(&w)
+				Expect(recorder.Header().Get("Access-Control-Allow-Origin")).To(Equal("https://example.com"))
+			})
+
+			It("sets Vary: Origin", func() {
+				interceptors.WithOrigin("https://example.com")(&w)
+				Expect(recorder.Header().Get("Vary")).To(Equal("Origin"))
+			})
+
+			It("returns a CORSOption", func() {
+				var opt interceptors.CORSOption = interceptors.WithOrigin("https://example.com")
+				Expect(opt(&w)).ToNot(BeNil())
+				Expect(recorder.Header().Get("Access-Control-Allow-Origin")).To(Equal("https://example.com"))
+			})
+		})
+
+		Describe("WithMethods", func() {
+			It("sets Access-Control-Allow-Methods from a single method", func() {
+				interceptors.WithMethods("GET")(&w)
+				Expect(recorder.Header().Get("Access-Control-Allow-Methods")).To(Equal("GET"))
+			})
+
+			It("sets Access-Control-Allow-Methods from multiple methods", func() {
+				interceptors.WithMethods("GET", "POST", "PUT", "DELETE")(&w)
+				Expect(recorder.Header().Get("Access-Control-Allow-Methods")).To(Equal("GET,POST,PUT,DELETE"))
+			})
+
+			It("returns a CORSOption", func() {
+				var opt interceptors.CORSOption = interceptors.WithMethods("GET", "POST")
+				Expect(opt(&w)).ToNot(BeNil())
+				Expect(recorder.Header().Get("Access-Control-Allow-Methods")).To(Equal("GET,POST"))
+			})
+		})
+
+		Describe("WithHeaders", func() {
+			It("sets Access-Control-Allow-Headers from a single header", func() {
+				interceptors.WithHeaders("Content-Type")(&w)
+				Expect(recorder.Header().Get("Access-Control-Allow-Headers")).To(Equal("Content-Type"))
+			})
+
+			It("sets Access-Control-Allow-Headers from multiple headers", func() {
+				interceptors.WithHeaders("Content-Type", "Authorization")(&w)
+				Expect(recorder.Header().Get("Access-Control-Allow-Headers")).To(Equal("Content-Type,Authorization"))
+			})
+
+			It("returns a CORSOption", func() {
+				var opt interceptors.CORSOption = interceptors.WithHeaders("Content-Type", "Authorization")
+				Expect(opt(&w)).ToNot(BeNil())
+				Expect(recorder.Header().Get("Access-Control-Allow-Headers")).To(Equal("Content-Type,Authorization"))
+			})
+		})
+
+		Describe("AllowCredentials", func() {
+			It("sets Access-Control-Allow-Credentials to true", func() {
+				interceptors.AllowCredentials("true")(&w)
+				Expect(recorder.Header().Get("Access-Control-Allow-Credentials")).To(Equal("true"))
+			})
+
+			It("sets Access-Control-Allow-Credentials to false", func() {
+				interceptors.AllowCredentials("false")(&w)
+				Expect(recorder.Header().Get("Access-Control-Allow-Credentials")).To(Equal("false"))
+			})
+
+			It("returns a CORSOption", func() {
+				var opt interceptors.CORSOption = interceptors.AllowCredentials("true")
+				Expect(opt(&w)).ToNot(BeNil())
+				Expect(recorder.Header().Get("Access-Control-Allow-Credentials")).To(Equal("true"))
+			})
+		})
+
+		Describe("WithMaxAge", func() {
+			It("sets Access-Control-Max-Age", func() {
+				interceptors.WithMaxAge("3600")(&w)
+				Expect(recorder.Header().Get("Access-Control-Max-Age")).To(Equal("3600"))
+			})
+
+			It("returns a CORSOption", func() {
+				var opt interceptors.CORSOption = interceptors.WithMaxAge("3600")
+				Expect(opt(&w)).ToNot(BeNil())
+				Expect(recorder.Header().Get("Access-Control-Max-Age")).To(Equal("3600"))
+			})
+		})
+
+		Describe("composing multiple options", func() {
+			It("applies all options independently", func() {
+				interceptors.WithOrigin("https://example.com")(&w)
+				interceptors.WithMethods("GET", "POST")(&w)
+				interceptors.WithHeaders("Content-Type", "Authorization")(&w)
+				interceptors.AllowCredentials("true")(&w)
+				interceptors.WithMaxAge("600")(&w)
+
+				Expect(recorder.Header().Get("Access-Control-Allow-Origin")).To(Equal("https://example.com"))
+				Expect(recorder.Header().Get("Access-Control-Allow-Methods")).To(Equal("GET,POST"))
+				Expect(recorder.Header().Get("Access-Control-Allow-Headers")).To(Equal("Content-Type,Authorization"))
+				Expect(recorder.Header().Get("Access-Control-Allow-Credentials")).To(Equal("true"))
+				Expect(recorder.Header().Get("Access-Control-Max-Age")).To(Equal("600"))
+			})
+		})
+	})
+})
